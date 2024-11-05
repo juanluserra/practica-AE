@@ -15,17 +15,14 @@ datos <- read.delim("prostate.data", header = TRUE, sep = "\t")
 
 datos <- datos[, -ncol(datos)] # eliminamos la columna "train"
 
-attach(datos)
+
 
 dim(datos)
 
 names(datos)
 
-colnames(datos) <- as.character(datos[1, ])
 
-datos <- datos[-1, ]
-
-str(datos) # hay 11 variables, la 1 es de tipo int y las demás de tipo 'chr'
+str(datos)
 
 # hay una columna de ids
 
@@ -33,7 +30,7 @@ datos <- datos[, -1]
 
 str(datos)
 
-
+attach(datos)
 
 datos$lcavol <- as.numeric(lcavol)
 
