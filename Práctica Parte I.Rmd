@@ -33,11 +33,8 @@ datos <- datos[, -1]
 
 str(datos)
 
-<<<<<<< HEAD
-datos$lpsa <- 0
-=======
-datos$lpsa <- 1
->>>>>>> 3a0e9d4eb8fe8079d0b2bb219e3c89c0a93691fb
+
+
 
 
 
