@@ -11,12 +11,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 #1
 ```{r}
+datos <- read.delim("prostate.data", header = TRUE, sep = "\t")
 
-
-
-datos <- prostate.data
-
-datos <- datos[,-ncol(datos)] # eliminamos la columna "train"
+datos <- datos[, -ncol(datos)] # eliminamos la columna "train"
 
 attach(datos)
 
@@ -26,13 +23,13 @@ names(datos)
 
 colnames(datos) <- as.character(datos[1, ])
 
-datos <- datos[-1,]
+datos <- datos[-1, ]
 
-str(datos)  # hay 11 variables, la 1 es de tipo int y las demás de tipo 'chr'
+str(datos) # hay 11 variables, la 1 es de tipo int y las demás de tipo 'chr'
 
 # hay una columna de ids
 
-datos <- datos[,-1]
+datos <- datos[, -1]
 
 str(datos)
 
@@ -63,17 +60,14 @@ sum(is.na(datos)) # no hay na
 
 str(datos) # ahora son num
 
-summary(datos)  # no estan estandarizadas, aun no es necesario
+summary(datos) # no estan estandarizadas, aun no es necesario
 
-#algunas estan en log porque el rango es muy amplio
-
-
+# algunas estan en log porque el rango es muy amplio
 ```
 
 #2
 
 ```{r}
-
 datos$svi <- as.factor(datos$svi)
 
 datos$gleason <- as.factor(datos$gleason)
@@ -86,50 +80,47 @@ str(datos)
 ```
 #3
 ```{r}
+a <- datos[datos$gleason == "7", ]
 
-a <- datos[datos$gleason=='7',]
-
-b <- a[a$svi == '0',]
+b <- a[a$svi == "0", ]
 
 num.a <- dim(a)[1]
 
 num.b <- dim(b)[1]
 
-porcentaje.ab <- num.b/(num.a)*100
+porcentaje.ab <- num.b / (num.a) * 100
 
-c <- datos[datos$svi == '0',]
+c <- datos[datos$svi == "0", ]
 
-d <- c[c$gleason == '7',]
+d <- c[c$gleason == "7", ]
 
 num.c <- dim(c)[1]
 
 num.d <- dim(d)[1]
 
-porcentaje.cd <- num.d/(num.c)*100
+porcentaje.cd <- num.d / (num.c) * 100
 
 
-tabla <- table(svi,gleason)
+tabla <- table(svi, gleason)
 
 
-chi_square_test <- chisq.test(tabla) #???
+chi_square_test <- chisq.test(tabla) # ???
 ```
 
 #4
 
 ```{r}
-
 recta <- lm(lpsa ~ lcavol)
 
 summary(recta)
 
-plot(lcavol,lpsa)
-abline(recta,col="red")
+plot(lcavol, lpsa)
+abline(recta, col = "red")
 
-confint(recta,level=0.95)
+confint(recta, level = 0.95)
 
-r1<-residuals(recta)
-sqrt(sum(r1^2)/(dim(datos)[1]-2)) #RSE
-
+r1 <- residuals(recta)
+sqrt(sum(r1^2) / (dim(datos)[1] - 2)) # RSE
 ```
 
 
