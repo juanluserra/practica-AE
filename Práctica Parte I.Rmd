@@ -17,8 +17,6 @@ datos <- read.delim("prostate.data", header = TRUE, sep = "\t")
 
 datos <- datos[, -ncol(datos)] # eliminamos la columna "train"
 
-attach(datos)
-
 dim(datos)
 
 names(datos)
@@ -35,32 +33,13 @@ datos <- datos[, -1]
 
 str(datos)
 
-
-
-datos$lcavol <- as.numeric(lcavol)
-
-datos$lweight <- as.numeric(lweight)
-
-datos$lbph <- as.numeric(lbph)
-
-
-datos$lcp <- as.numeric(lcp)
-
-
-datos$pgg45 <- as.numeric(pgg45)
-
 datos$lpsa <- as.numeric(lpsa)
-
-
-
 
 
 
 
 sum(is.na(datos)) # no hay na
 
-
-str(datos) # ahora son num
 
 summary(datos) # no estan estandarizadas, aun no es necesario
 
@@ -70,6 +49,9 @@ summary(datos) # no estan estandarizadas, aun no es necesario
 #2
 
 ```{r}
+
+attach(datos)
+
 datos$svi <- as.factor(datos$svi)
 
 datos$gleason <- as.factor(datos$gleason)
@@ -104,6 +86,8 @@ porcentaje.cd <- num.d / (num.c) * 100
 
 
 tabla <- table(svi, gleason)
+
+
 
 
 chi_square_test <- chisq.test(tabla) # ???
