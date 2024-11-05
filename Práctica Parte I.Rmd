@@ -2,11 +2,12 @@
 title: "Práctica AE"
 author: "Antonio Galián Gálvez"
 date: "2024-10-28"
-output: html_document
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+options(encoding = "UTF-8")
 ```
 
 # 0. Cargamos los datos y eliminamos la columna train
@@ -16,27 +17,31 @@ datos <- read.delim("prostate.data.txt", header = TRUE, sep = "\t")
 
 # Eliminamos la columna train
 datos <- datos[, -ncol(datos)]
+```
 
-# Veeos la estructura de los datos
+# 1. Exploración de datos
+```{r}
+# Vemos las variables que hay
+ncol(datos)
+
+# Eliminamos la columna id
+datos <- datos[, -1]
+
+# Comprobamos si hay NA
+sum(is.na(datos))
+# Como no hay NA, no hay que hacer ninguna limpieza
+
+# Vemos la estructura de los datos
 dim(datos)
 names(datos)
 str(datos)
-
-datos <- datos[, -1]
-
-str(datos)
-
-
-sum(is.na(datos)) # no hay na
-
-
-summary(datos) # no estan estandarizadas, aun no es necesario
-
-# algunas estan en log porque el rango es muy amplio
-
+summary(datos)
 ```
 
-#2
+- Hay 10 variables, 9 si quitamos el id del paciente
+- Las variables son numéricas
+
+# 2
 
 ```{r}
 
