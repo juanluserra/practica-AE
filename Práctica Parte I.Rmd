@@ -33,7 +33,7 @@ datos <- datos[, -1]
 
 str(datos)
 
-datos$lpsa <- as.numeric(lpsa)
+datos$lpsa <- 0
 
 
 
