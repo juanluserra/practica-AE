@@ -9,28 +9,22 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-#1
+# 0. Cargamos los datos y eliminamos la columna train
 ```{r}
-datos <- read.delim("prostate.data", header = TRUE, sep = "\t")
+# Cargamos los datos con separador de tabulador
+datos <- read.delim("prostate.data.txt", header = TRUE, sep = "\t")
 
-datos <- datos[, -ncol(datos)] # eliminamos la columna "train"
+# Eliminamos la columna train
+datos <- datos[, -ncol(datos)]
 
+# Veeos la estructura de los datos
 dim(datos)
-
 names(datos)
-
-str(datos) # hay 11 variables,
-
-# hay una columna de ids
+str(datos)
 
 datos <- datos[, -1]
 
 str(datos)
-
-
-
-
-
 
 
 sum(is.na(datos)) # no hay na
