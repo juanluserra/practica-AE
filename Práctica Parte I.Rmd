@@ -89,7 +89,7 @@ tabla <- table(svi, gleason)
 
 ```{r}
 recta <- lm(lpsa ~ lcavol)
-
+a
 summary(recta)
 
 plot(lcavol, lpsa)
