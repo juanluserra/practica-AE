@@ -118,8 +118,55 @@ library(corrplot)
 
 datos
 
-corrplot(cor(datos[,c(-3,-5,-7)]),type="upper",tl.cex=0.5)
+num_cols <- which(sapply(datos, is.numeric))
 
-mul <- 0
+corrplot(cor(datos[,num_cols]),type="upper",tl.cex=0.5)
+
+datos.num <- datos[,c(-3,-7,-8)]
+
+rectaMul <- lm(lpsa ~ .,data=datos.num)
+
+summary(rectaMul)
+
+```
+#6
+
+```{r}
+
+library(glmnet)
+
+x <- model.matrix(lpsa~.,datos.num)[,-1]
+
+names(datos.num)
+
+y <- datos$lpsa
+
+train <- sample(1:nrow(datos), nrow(datos)/2)
+
+test <- (-train)
+
+malla <- 10^seq(10,-2,length=100)
+
+ridge.train <- glmnet(x[train,],y[train],alpha=0,lambda=malla,thresh = 1e-12)
+
+betas <- ridge.train$beta
+
+lambdas <- ridge.train$lambda
+
+ncol(datos)
+
+for (i in 1:ncol(x)){
+  
+  plot(log(lambdas),betas[i,])
+  
+}
+
+
+
+
+cv.out <- cv.glmnet(x[train,],y[train],alpha=0)
+
+plot(cv.out)
+
 ```
 
