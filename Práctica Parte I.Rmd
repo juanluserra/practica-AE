@@ -82,6 +82,9 @@ porcentaje.cd <- num.d / (num.c) * 100
 
 tabla <- table(svi, gleason)
 
+addmargins(prop.table(tabla,1),2)*100
+addmargins(prop.table(tabla,2),1)*100
+
 ```
 
 #4
@@ -98,6 +101,22 @@ confint(recta, level = 0.95)
 
 r1 <- residuals(recta)
 sqrt(sum(r1^2) / (dim(datos)[1] - 2)) # RSE
+
+
+```
+
+#5
+
+```{r}
+
+library(corrplot)
+
+datos
+
+corrplot(cor(datos[,c(-3,-5,-7)]),type="upper",tl.cex=0.5)
+
+mul <-
+
 ```
 
 
