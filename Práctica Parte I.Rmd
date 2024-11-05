@@ -22,7 +22,6 @@ dim(datos)
 names(datos)
 str(datos)
 
-# Eliminamos la columna de identificador del paciente
 datos <- datos[, -1]
 
 str(datos)
@@ -34,6 +33,7 @@ sum(is.na(datos)) # no hay na
 summary(datos) # no estan estandarizadas, aun no es necesario
 
 # algunas estan en log porque el rango es muy amplio
+
 ```
 
 #2
@@ -77,10 +77,6 @@ porcentaje.cd <- num.d / (num.c) * 100
 
 tabla <- table(svi, gleason)
 
-
-
-
-chi_square_test <- chisq.test(tabla) # ???
 ```
 
 #4
