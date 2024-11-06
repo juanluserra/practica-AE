@@ -10,6 +10,10 @@ knitr::opts_chunk$set(echo = TRUE)
 options(encoding = "UTF-8")
 ```
 
+```{r}
+library(gplots)
+```
+
 # 0. Cargamos los datos y eliminamos la columna train
 ```{r}
 # Cargamos los datos con separador de tabulador
@@ -46,50 +50,67 @@ summary(datos)
 - Las variables no están ni normalizadas ni estandarizadas
 - Hay variables que están en escala logarítmica ya que algunas variables tienen valores negativos a pesar de estar definidas estrictamente positivas, como la concentración en ng/m
 
-# 2
-
+# 2. Análisis de variable categóricas
 ```{r}
-
-attach(datos)
-
+# Convertimos las variables en factores
 datos$svi <- as.factor(datos$svi)
-
 datos$gleason <- as.factor(datos$gleason)
-
 datos$age <- as.factor(datos$age)
 
-
-
+# Comprobamos que las variables son categóricas
 str(datos)
 ```
-# 3
+
+# 3. Análisis de frecuencias
+
+- **¿Qué porcentaje de pacientes con la puntuación de Gleason igual a 7, presenta índice igual svi igual a 0?**
 ```{r}
-a <- datos[datos$gleason == "7", ]
+# Seleccionamos los pacientes con la puntuación de Gleason igual a 7 y los que tienen svi igual a 0 dentro de estos
+datos.gleason7 <- datos[datos$gleason == "7", ]
+datos.gleason7.svi0 <- datos.gleason7[datos.gleason7$svi == "0", ]
 
-b <- a[a$svi == "0", ]
+# Vemos los pacientes que hay en datos.gleason_7_0 y en datos
+patients.gleason7.svi0 <- nrow(datos.gleason7.svi0)
+patients <- nrow(datos)
 
-num.a <- dim(a)[1]
+# Dividimos la cantidad de pacientes filtrados entre el total
+porcentaje <- patients.gleason7.svi0 / patients * 100
+porcentaje
+```
+Vemos que el porcentaje es del 38.14433%.
 
-num.b <- dim(b)[1]
+- **¿Qué porcentaje de pacientes con índice svi igual a 0 tiene la puntuación de Gleason igual a 7?**
+```{r}
+# Seleccionamos los individuos con svi igual a 0 y con gleason igual a 7 dentro de estos
+datos.svi0 <- datos[datos$svi == "0", ]
+datos.svi0.gleason7 <- datos.svi0[datos.svi0$gleason == "7", ]
 
-porcentaje.ab <- num.b / (num.a) * 100
+# Hacemos el porcentaje
+porcentaje <- nrow(datos.svi0.gleason7) / nrow(datos.svi0) * 100
+porcentaje
+```
+Vemos que el porcentaje es del 48.68421%.
 
-c <- datos[datos$svi == "0", ]
+- **Estas dos variables, ¿son independientes?**
+```{r}
+# Hacemos un attach al dataset
+attach(datos)
 
-d <- c[c$gleason == "7", ]
-
-num.c <- dim(c)[1]
-
-num.d <- dim(d)[1]
-
-porcentaje.cd <- num.d / (num.c) * 100
-
-
+# Creamos una tabla con las dos variables
 tabla <- table(svi, gleason)
 
-addmargins(prop.table(tabla,1),2)*100
-addmargins(prop.table(tabla,2),1)*100
+# Creamos tablas de probabilidad por fila y por columna
+addmargins(prop.table(tabla, 1), 2) * 100
+addmargins(prop.table(tabla, 2), 1) * 100
 
+# Realizamos un gráfico de la tabla para visualizar mejor la Independencia
+heatmap.2(
+    prop.table(tabla),
+    xlab = "Gleason", ylab = "SVI",
+    density.info = "none",
+    col = blues9,
+    trace = "none",
+)
 ```
 
 # 4
