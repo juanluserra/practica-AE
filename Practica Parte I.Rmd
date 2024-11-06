@@ -11,7 +11,10 @@ options(encoding = "UTF-8")
 ```
 
 ```{r}
+# Cargamos las librerías
 library(gplots)
+library(corrplot)
+library(glmnet)
 ```
 
 # 0. Cargamos los datos y eliminamos la columna train
@@ -112,103 +115,133 @@ heatmap.2(
     trace = "none",
 )
 ```
+Se puede ver en la gráfica que la mayoría de los casos se acumulan en zonas concretas:
+- Cuando SVI es 0, se acumulan en Gleason = 6 y 7.
+- Cuando SVI es 1, se acumulan en Gleason = 7.
+Por lo tanto, como los datos no se distribuyen por igual en todos los casos, las dos variables son dependientes.
 
-# 4
-
+# 4. Regresión lineal simple
 ```{r}
-
+# Realizamos el modelo lineal
 recta <- lm(lpsa ~ lcavol)
 
-summary(recta)
+# Vemos el modelo
+recta.summary <- summary(recta)
+recta.summary
 
-plot(lcavol, lpsa, main='lpsa vs lcavol')
+# Representamos el modelo sobre los datos
+plot(lcavol, lpsa, main = "lpsa vs lcavol")
 abline(recta, col = "red")
 
-confint(recta, level = 0.95)
+# Realizamos el intervalo de confianza al 95%
+intervals <- confint(recta, level = 0.95)
+intervals
 
+# Calculamos el porcentaje de variación relativo de los intervalos de confianza respecto al valor predicho de los coeficientes
+abs(intervals[1, 1] - intervals[1, 2]) / recta.summary$coefficients[1, 1] * 100
+abs(intervals[2, 1] - intervals[2, 2]) / recta.summary$coefficients[2, 1] * 100
+
+# Calculamos la suma de cuadrados de los residuos (RSE)
 r1 <- residuals(recta)
-sqrt(sum(r1^2) / (dim(datos)[1] - 2)) # RSE
+RSE <- sqrt(sum(r1^2) / (dim(datos)[1] - 2))
+RSE / mean(lpsa) * 100
 
-
+cavol <- exp(lcavol)
+psa <- exp(lpsa)
+plot(cavol, psa)
 ```
 
-# 5
+Vamos a analizar el modelo lineal:
+- El t-value es bastante alto (12.36 y 10.55), por lo que los coeficientes están bastante alejados de ser nulos. 
+- El p-value es bastante bajo (<2e-16), lo que refuerza que los coeficientes no son nulos.
+- El coeficiente R^2 no es muy alto, por lo que quizás el modelo lineal no sea el mejor modelo al que los datos se ajusten. Como el valor es  0.5394, el modelo explica el 53.94% de la variabilidad de lpsa respecto a lcavol.
+- El RSE es de 0.7875. Si lo dividimos entre la media de lpsa, vemos que tendríamos un error del 31.77%, lo que indica que el modelo no es muy bueno.
+- La lontidud de los intervalos de confiana de las variables representan un 32.1% y 37.6% respecto a los valores estimados de los coeficientes. Esto es una variablilidad importante.
 
+Está claro que las variables lpsa y lcavol están relacionadas. 
+Sin embargo, aunque el p-value del ajuste lineal sea bajo, otros factores como el R^2, los residuos y los intervalos de confianza nos indican que los datos están muy dispersos respecto al modelo.
+En el caso de quedarnos con el modelo, podemos pasar de un modelo lineal a un modelo de potencias, donde cavol es una potencia de psa con exponente $\beta_1$.
+$$
+    \ln(lpsa) = \beta_0 + \beta_1 \ln(lcavol) \Rightarrow psa = e^{\beta_0 + \beta_1 \ln(lcavol)} = \tilde{\beta_0} cavol^{\beta_1}
+$$
+
+
+# 5. Regresión lineal multiple.
 ```{r}
-
-library(corrplot)
-
-datos
-
+# Seleccionamos las columnas numéricas
 num_cols <- which(sapply(datos, is.numeric))
 
-corrplot(cor(datos[,num_cols]),type="upper",tl.cex=0.5)
+# Hacemos un plot de la matriz de correlación
+corrplot(cor(datos[, num_cols]), type = "upper", tl.cex = 0.5)
 
-datos.num <- datos[,c(-3,-7,-8)]
+# Cremos un dataframe con solo los datos numéricos
+datos.num <- datos[, c(-3, -7, -8)]
 
-rectaMul <- lm(lpsa ~ .,data=datos.num)
+# Realizamos un modelo lineal entre lpsa y las variables numéricas
+rectaMul <- lm(lpsa ~ ., data = datos.num)
 
+# Vemos el modelo lineal
 summary(rectaMul)
-
 ```
-#6
 
+Se puede ver en la matriz de correlación como algunas variables parecen tener cierta dependencia.
+En el caso de lpsa, parece estar relacionada con lcavol, lweight, lcp y en menor medida con pgg45. 
+Si analizamos el p-value de los coeficientes, podemos ver que solo las variables svi1, lweight y lcavol tienen valores bajos, acompañados de t-values relativamente altos. Sin embargo, los valores de R-squared y RSE son mejores que en el modelo lineal simple con lcavol, siendo de 0.6443 y 0.7071 respectivamente.
+Por lo tanto, podemos determinar que lpsa está relacionada con algunas variables y que el modelo lineal múltiple da mejores resultados que el simple, pero siguen siendo resultados con grandes errores. Además, se podrían eliminar algunas variables con las cuales no parece haber dependencia.
+
+# 6. Modelo de Ridge y Lasso.
 ```{r}
-
-library(glmnet)
-
-
-x <- model.matrix(lpsa~.,datos.num)[,-1] #variables numericas
-
-y <- datos.num$lpsa #variable de salida
+# Seleccionamos los datos para realizar los modelos
+x <- model.matrix(lpsa ~ ., datos.num)[, -1]
+y <- datos.num$lpsa
 
 set.seed(1)
 
-train <- sample(1:nrow(x), nrow(x)/2) #filas de entrenamiento
+train <- sample(seq(1, nrow(x)), nrow(x) / 2) # filas de entrenamiento
 
 test <- (-train)
 
 
 y.test <- y[test]
 
-malla <- 10^seq(10,-2,length=100) #mallado de lambdas
+malla <- 10^seq(10, -2, length = 100) # mallado de lambdas
 
-malla.ridge.train <- glmnet(x[train,],y[train],alpha=0,lambda=malla) # regresion ridge sin CV con conjunto de entrenamiento
+malla.ridge.train <- glmnet(x[train, ], y[train], alpha = 0, lambda = malla) # regresion ridge sin CV con conjunto de entrenamiento
 
-plot(malla.ridge.train,xvar="lambda" ) # plot de betas vs log(lambda)
+plot(malla.ridge.train, xvar = "lambda") # plot de betas vs log(lambda)
 
 
 
-cv.out.train <- cv.glmnet(x[train,],y[train],alpha=0)  # regresion ridge con CV con conjunto de entrenamiento
+cv.out.train <- cv.glmnet(x[train, ], y[train], alpha = 0) # regresion ridge con CV con conjunto de entrenamiento
 
-bestlam.train<-cv.out.train$lambda.min  #lambda que minmiza el MSE
+bestlam.train <- cv.out.train$lambda.min # lambda que minmiza el MSE
 
 bestlam.train
 
-ridge.train<-glmnet(x[train,],y[train],alpha=0, lambda=bestlam.train) #regresion ridge con CV con mejor lambda en conjunto de entrenamiento
+ridge.train <- glmnet(x[train, ], y[train], alpha = 0, lambda = bestlam.train) # regresion ridge con CV con mejor lambda en conjunto de entrenamiento
 
-coef(ridge.train)[,1]
+coef(ridge.train)[, 1]
 
-rectaMul.train <- glmnet(x[train,],y[train],alpha=0, lambda=0)  # regresion multiple con datos de entrenamiento
+rectaMul.train <- glmnet(x[train, ], y[train], alpha = 0, lambda = 0) # regresion multiple con datos de entrenamiento
 
-coef(rectaMul.train)[,1]
+coef(rectaMul.train)[, 1]
 
-#el intercept es mayor en ridge
+# el intercept es mayor en ridge
 # beta de lcp mayor en ridge
 # los demas betas son menores en ridge
 
-plot(cv.out.train)  #MSE vs log(lambda)
+plot(cv.out.train) # MSE vs log(lambda)
 
-ridge.pred <- predict(ridge.train,newx=x[test,]) # predicion de 'ridge.train' en conjunto de testeo
-
-
-
-mean((ridge.pred-y.test)^2) #MSE estimado de Ridge
+ridge.pred <- predict(ridge.train, newx = x[test, ]) # predicion de 'ridge.train' en conjunto de testeo
 
 
-rectaMul.pred <- predict(rectaMul.train,newx=x[test,])
 
-mean((rectaMul.pred-y.test)^2) #MSE estimado de rectaMul
+mean((ridge.pred - y.test)^2) # MSE estimado de Ridge
+
+
+rectaMul.pred <- predict(rectaMul.train, newx = x[test, ])
+
+mean((rectaMul.pred - y.test)^2) # MSE estimado de rectaMul
 
 # El MSE de la regresion multiple de Ridge es menor que la de rectaMul
 
