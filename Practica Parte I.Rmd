@@ -116,11 +116,12 @@ heatmap.2(
 # 4
 
 ```{r}
+
 recta <- lm(lpsa ~ lcavol)
 
 summary(recta)
 
-plot(lcavol, lpsa)
+plot(lcavol, lpsa, main='lpsa vs lcavol')
 abline(recta, col = "red")
 
 confint(recta, level = 0.95)
@@ -139,8 +140,77 @@ library(corrplot)
 
 datos
 
-corrplot(cor(datos[,c(-3,-5,-7)]),type="upper",tl.cex=0.5)
+num_cols <- which(sapply(datos, is.numeric))
 
-mul <- 0
+corrplot(cor(datos[,num_cols]),type="upper",tl.cex=0.5)
+
+datos.num <- datos[,c(-3,-7,-8)]
+
+rectaMul <- lm(lpsa ~ .,data=datos.num)
+
+summary(rectaMul)
+
+```
+#6
+
+```{r}
+
+library(glmnet)
+
+
+x <- model.matrix(lpsa~.,datos.num)[,-1] #variables numericas
+
+y <- datos.num$lpsa #variable de salida
+
+set.seed(1)
+
+train <- sample(1:nrow(x), nrow(x)/2) #filas de entrenamiento
+
+test <- (-train)
+
+
+y.test <- y[test]
+
+malla <- 10^seq(10,-2,length=100) #mallado de lambdas
+
+malla.ridge.train <- glmnet(x[train,],y[train],alpha=0,lambda=malla) # regresion ridge sin CV con conjunto de entrenamiento
+
+plot(malla.ridge.train,xvar="lambda" ) # plot de betas vs log(lambda)
+
+
+
+cv.out.train <- cv.glmnet(x[train,],y[train],alpha=0)  # regresion ridge con CV con conjunto de entrenamiento
+
+bestlam.train<-cv.out.train$lambda.min  #lambda que minmiza el MSE
+
+bestlam.train
+
+ridge.train<-glmnet(x[train,],y[train],alpha=0, lambda=bestlam.train) #regresion ridge con CV con mejor lambda en conjunto de entrenamiento
+
+coef(ridge.train)[,1]
+
+rectaMul.train <- glmnet(x[train,],y[train],alpha=0, lambda=0)  # regresion multiple con datos de entrenamiento
+
+coef(rectaMul.train)[,1]
+
+#el intercept es mayor en ridge
+# beta de lcp mayor en ridge
+# los demas betas son menores en ridge
+
+plot(cv.out.train)  #MSE vs log(lambda)
+
+ridge.pred <- predict(ridge.train,newx=x[test,]) # predicion de 'ridge.train' en conjunto de testeo
+
+
+
+mean((ridge.pred-y.test)^2) #MSE estimado de Ridge
+
+
+rectaMul.pred <- predict(rectaMul.train,newx=x[test,])
+
+mean((rectaMul.pred-y.test)^2) #MSE estimado de rectaMul
+
+# El MSE de la regresion multiple de Ridge es menor que la de rectaMul
+
 ```
 
