@@ -195,11 +195,12 @@ Por lo tanto, podemos determinar que lpsa está relacionada con algunas variable
 x <- model.matrix(lpsa ~ ., datos.num)[, -1]
 y <- datos.num$lpsa
 
+# Seleccionamos la semilla para los números aleatorios
 set.seed(1)
 
-train <- sample(seq(1, nrow(x)), nrow(x) / 2) # filas de entrenamiento
-
-test <- (-train)
+# Seleccionamos los conjuntos de entrenamiento y test
+train <- sample(seq(1, nrow(x)), nrow(x) / 2) # conjunto de entrenamiento
+test <- (-train) # conjunto de testeo
 
 
 y.test <- y[test]
