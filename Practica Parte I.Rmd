@@ -139,6 +139,8 @@ library(glmnet)
 
 x <- model.matrix(lpsa~.,datos.num)[,-1] #variables numericas
 
+x
+
 y <- datos.num$lpsa #variable de salida
 
 set.seed(1)
@@ -152,19 +154,24 @@ y.test <- y[test]
 
 malla <- 10^seq(10,-2,length=100) #mallado de lambdas
 
+
+# Ridge
+
+
+
 malla.ridge.train <- glmnet(x[train,],y[train],alpha=0,lambda=malla) # regresion ridge sin CV con conjunto de entrenamiento
 
 plot(malla.ridge.train,xvar="lambda" ) # plot de betas vs log(lambda)
 
 
 
-cv.out.train <- cv.glmnet(x[train,],y[train],alpha=0)  # regresion ridge con CV con conjunto de entrenamiento
+cv.out.ridge.train <- cv.glmnet(x[train,],y[train],alpha=0)  # regresion ridge con CV con conjunto de entrenamiento
 
-bestlam.train<-cv.out.train$lambda.min  #lambda que minmiza el MSE
+bestlam.ridge.train<-cv.out.ridge.train$lambda.min  #lambda que minmiza el MSE
 
-bestlam.train
+bestlam.ridge.train
 
-ridge.train<-glmnet(x[train,],y[train],alpha=0, lambda=bestlam.train) #regresion ridge con CV con mejor lambda en conjunto de entrenamiento
+ridge.train<-glmnet(x[train,],y[train],alpha=0, lambda=bestlam.ridge.train) #regresion ridge con CV con mejor lambda en conjunto de entrenamiento
 
 coef(ridge.train)[,1]
 
@@ -176,7 +183,7 @@ coef(rectaMul.train)[,1]
 # beta de lcp mayor en ridge
 # los demas betas son menores en ridge
 
-plot(cv.out.train)  #MSE vs log(lambda)
+plot(cv.out.ridge.train)  #MSE vs log(lambda)
 
 ridge.pred <- predict(ridge.train,newx=x[test,]) # predicion de 'ridge.train' en conjunto de testeo
 
@@ -190,6 +197,113 @@ rectaMul.pred <- predict(rectaMul.train,newx=x[test,])
 mean((rectaMul.pred-y.test)^2) #MSE estimado de rectaMul
 
 # El MSE de la regresion multiple de Ridge es menor que la de rectaMul
+
+##############################################################################
+#Lasso
+##############################################################################
+
+
+malla.lasso.train <- glmnet(x[train,],y[train],alpha=1,lambda=malla) # regresion lasso sin CV con conjunto de entrenamiento
+
+plot(malla.lasso.train,xvar="lambda" ) # plot de betas vs log(lambda)
+
+
+
+cv.out.lasso.train <- cv.glmnet(x[train,],y[train],alpha=1)  # regresion lasso con CV con conjunto de entrenamiento
+
+bestlam.lasso.train<-cv.out.lasso.train$lambda.min  #lambda que minmiza el MSE
+
+bestlam.lasso.train
+
+lasso.train<-glmnet(x[train,],y[train],alpha=1, lambda=bestlam.lasso.train) #regresion lasso con CV con mejor lambda en conjunto de entrenamiento
+
+coef(lasso.train)[,1]
+
+
+#el intercept es mayor en lasso
+# beta de lcp mayor en lasso
+# los demas betas son menores en lasso
+
+plot(cv.out.lasso.train)  #MSE vs log(lambda)
+
+lasso.pred <- predict(lasso.train,newx=x[test,]) # predicion de 'lasso.train' en conjunto de testeo
+
+
+
+mean((lasso.pred-y.test)^2) #MSE estimado de lasso
+
+
+rectaMul.pred <- predict(rectaMul.train,newx=x[test,])
+
+mean((rectaMul.pred-y.test)^2) #MSE estimado de rectaMul
+
+# El MSE de la regresion multiple de lasso es menor que la de rectaMul
+
+```
+#7
+
+```{r}
+
+library(MASS)
+
+lda=lda(svi~ lcavol+lcp+lpsa)  
+
+lda
+
+lda.pred=predict(lda)
+
+
+tabla.confusion.lda <- table(lda.pred$class,svi)  # tabla de confusion
+
+#hay pocos valores no diagonales en comparacion con la diagonal, buen modelo
+
+(tabla.confusion.lda[1,2] + tabla.confusion.lda[2,1])/sum(tabla.confusion.lda) * 100 # 11.34% de datos mal clasificados
+ 
+```
+#8
+
+```{r}
+
+lr<-glm(svi~ lcavol+lcp+lpsa,family=binomial)
+
+lr.probs<-predict(lr,type="response")
+
+lr.pred<-rep(0,97)
+ 
+lr.pred[lr.probs > .5]=1
+
+table(lr.pred)
+
+table(svi)
+
+# Hay 3 datos mal clasificados
+
+predict(lr,newdata = data.frame(lcavol = 2.8269,lcp=1.843, lpsa=3.285),type="response")
+
+# Prob de 0.77. bien
+
+
+```
+
+#9
+
+```{r}
+
+datos.num$svi <- as.numeric(datos$svi)
+
+variables_pca <- datos.num[, c("lcavol", "lweight", "lbph", "lcp", "svi")]
+
+variables_pca
+
+pr.out <- prcomp(variables_pca, scale = TRUE)
+
+pr.out
+
+summary(pr.out)
+
+biplot(pr.out, scale = 0)  #biplot
+
+
 
 ```
 
