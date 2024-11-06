@@ -190,7 +190,8 @@ Si analizamos el p-value de los coeficientes, podemos ver que solo las variables
 Por lo tanto, podemos determinar que lpsa está relacionada con algunas variables y que el modelo lineal múltiple da mejores resultados que el simple, pero siguen siendo resultados con grandes errores. Además, se podrían eliminar algunas variables con las cuales no parece haber dependencia.
 
 # 6. Modelo de Ridge y Lasso.
-Realizamos el modelo Rigde
+
+**Realizamos el modelo Rigde**
 ```{r}
 # Seleccionamos los datos para realizar los modelos
 x <- model.matrix(lpsa ~ ., datos.num)[, -1]
@@ -214,86 +215,87 @@ malla <- 10^seq(10, -2, length = 100)
 malla.ridge.train <- glmnet(x.train, y.train, alpha = 0, lambda = malla) # regresion ridge sin CV con conjunto de entrenamiento
 
 # Representamos los valores de los coeficientes a lo largo del valor lambda
-plot(malla.ridge.train, xvar = "lambda") # plot de betas vs log(lambda)
+plot(malla.ridge.train, xvar = "lambda")
+legend("topright", lty = 1, col = 2:ncol(datos.num)-1, legend = names(datos.num[-ncol(datos.num)]))
 
+# Realizamos una regresión Ridge con CV
+cv.out.ridge.train <- cv.glmnet(x.train, y.train, alpha = 0)
 
-cv.out.ridge.train <- cv.glmnet(x.train, y.train, alpha=0)  # regresion ridge con CV con conjunto de entrenamiento
-
-bestlam.ridge.train<-cv.out.ridge.train$lambda.min  #lambda que minmiza el MSE
-
+# Seleccionamos el mejor lambda
+bestlam.ridge.train <- cv.out.ridge.train$lambda.min
 bestlam.ridge.train
 
-ridge.train<-glmnet(x[train,],y[train],alpha=0, lambda=bestlam.ridge.train) #regresion ridge con CV con mejor lambda en conjunto de entrenamiento
-
+# Realizamos la regresión Ridge con CV y el mejor lambda
+ridge.train <- glmnet(x.train, y.train, alpha = 0, lambda = bestlam.ridge.train)
 coef(ridge.train)[, 1]
 
-rectaMul.train <- glmnet(x[train, ], y[train], alpha = 0, lambda = 0) # regresion multiple con datos de entrenamiento
-
+# Realizamos una regresión múltiple con los datos de entrenamiento
+rectaMul.train <- glmnet(x.train, y.train, alpha = 0, lambda = 0) 
 coef(rectaMul.train)[, 1]
 
-# el intercept es mayor en ridge
-# beta de lcp mayor en ridge
-# los demas betas son menores en ridge
+# Realizamos una gráfica para ver el MSE de los ajustes para cada valor de lambda
+plot(cv.out.ridge.train)
+
+# Hacemos una predicción del Ridge para sacar los valores del MSE
+ridge.pred <- predict(ridge.train, newx = x.test) # predicion de 'ridge.train' en conjunto de testeo
+ridge.MSE <- mean((ridge.pred - y.test)^2) # MSE estimado de Ridge
+
+# Hacemos una predicción el modelo de regresión lineal múltiple para sacar los valores del MSE
+rectaMul.pred <- predict(rectaMul.train, newx = x[test, ]) # predicion de 'rectaMul.train' en conjunto de testeo
+rectMul.MSE <- mean((rectaMul.pred - y.test)^2) # MSE estimado de rectaMul
+
+# Comparamos los valores de los MSE con las medias de los valores de testeo
+ridge.MSE / mean(y.test) * 100
+rectMul.MSE / mean(y.test) * 100
+```
+ 
+Tras realizar la validación cruzada, podemos ver como el mejor $\lambda$ es $\lambda = 0.1997304$. 
+Al comparar el modelo Ridge con el $\lambda$ óptimo y el modelo de regresión lineal múltiple, se observa cómo el valor de MSE es menor para el modelo de regresión Ridge. Comparando estos valores con la media de los valores del conjunto de testeo, se observa una mejora de aproximadamente un 1.4% (del 20.7% al 19.3%).
 
 
-plot(cv.out.ridge.train)  #MSE vs log(lambda)
+**Realizamos el modelo Lasso**
+```{r}
+# Realizamos una regresión LASSO sin CV para el conjunto de entrenamiento
+malla.lasso.train <- glmnet(x.train, y.train, alpha = 1, lambda = malla)
 
-ridge.pred <- predict(ridge.train, newx = x[test, ]) # predicion de 'ridge.train' en conjunto de testeo
+# Representamos los valores de los coeficientes a lo largo del valor lambda
+plot(malla.lasso.train, xvar = "lambda")
+legend("topright", lty = 1, col = 2:ncol(datos.num) - 1, legend = names(datos.num[-ncol(datos.num)]))
 
+# Realizamos una regresión LASSO con CV para el conjunto de entrenamiento
+cv.out.lasso.train <- cv.glmnet(x[train, ], y[train], alpha = 1)
 
-
-mean((ridge.pred - y.test)^2) # MSE estimado de Ridge
-
-
-rectaMul.pred <- predict(rectaMul.train, newx = x[test, ])
-
-mean((rectaMul.pred - y.test)^2) # MSE estimado de rectaMul
-
-# El MSE de la regresion multiple de Ridge es menor que la de rectaMul
-
-##############################################################################
-#Lasso
-##############################################################################
-
-
-malla.lasso.train <- glmnet(x[train,],y[train],alpha=1,lambda=malla) # regresion lasso sin CV con conjunto de entrenamiento
-
-plot(malla.lasso.train,xvar="lambda" ) # plot de betas vs log(lambda)
-
-
-
-cv.out.lasso.train <- cv.glmnet(x[train,],y[train],alpha=1)  # regresion lasso con CV con conjunto de entrenamiento
-
-bestlam.lasso.train<-cv.out.lasso.train$lambda.min  #lambda que minmiza el MSE
-
+# Seleccionamos el mejor lambda (el que minimiza el MSE)
+bestlam.lasso.train <- cv.out.lasso.train$lambda.min
 bestlam.lasso.train
 
-lasso.train<-glmnet(x[train,],y[train],alpha=1, lambda=bestlam.lasso.train) #regresion lasso con CV con mejor lambda en conjunto de entrenamiento
+# Realizamos una regresión LASSO con el mejor lambda para el conjunto de entrenamiento
+lasso.train <- glmnet(x[train, ], y[train], alpha = 1, lambda = bestlam.lasso.train)
+coef(lasso.train)[, 1]
 
-coef(lasso.train)[,1]
+# Realizamos una gráfica para ver el MSE de los ajustes para cada valor de lambda
+plot(cv.out.lasso.train) # MSE vs log(lambda)
 
+# Hacemos una predicción del LASSO para sacar los valores del MSE
+lasso.pred <- predict(lasso.train, newx = x[test, ]) # predicion de 'lasso.train' en conjunto de testeo
+lasso.MSE <- mean((lasso.pred - y.test)^2) # MSE estimado de lasso
+lasso.MSE
+lasso.MSE / mean(y.test) * 100
 
-#el intercept es mayor en lasso
-# beta de lcp mayor en lasso
-# los demas betas son menores en lasso
-
-plot(cv.out.lasso.train)  #MSE vs log(lambda)
-
-lasso.pred <- predict(lasso.train,newx=x[test,]) # predicion de 'lasso.train' en conjunto de testeo
-
-
-
-mean((lasso.pred-y.test)^2) #MSE estimado de lasso
-
-
-rectaMul.pred <- predict(rectaMul.train,newx=x[test,])
-
-mean((rectaMul.pred-y.test)^2) #MSE estimado de rectaMul
-
-# El MSE de la regresion multiple de lasso es menor que la de rectaMul
-
+# Hacemos una predicción el modelo de regresión lineal múltiple para sacar los valores del MSE
+rectaMul.pred <- predict(rectaMul.train, newx = x[test, ])
+rectaMul.MSE <- mean((rectaMul.pred - y.test)^2) # MSE estimado de rectaMul
+rectaMul.MSE
+rectaMul.MSE / mean(y.test) * 100
 ```
-#7
+
+Podemos observar que el mejor $\lamdba$ para realizar el ajuste es $\lambda = 0.04833733$. 
+Al comparar el modelo LASSO con el $\lambda$ óptimo y el modelo de regresión lineal múltiple, se observa cómo el valor de MSE es menor para el modelo de regresión LASSO. Comparando estos valores con la media de los valores del conjunto de testeo, se observa una mejora de aproximadamente un 1.2% (del 20.7% al 19.5%).
+
+Se puede ver como Ridge ha dado un valor de MSE un poco menor que LASSO, pero son resultados muy similares.
+
+
+# 7
 
 ```{r}
 
