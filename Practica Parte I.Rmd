@@ -15,7 +15,9 @@ options(encoding = "UTF-8")
 library(gplots)
 library(corrplot)
 library(glmnet)
+library(MASS)
 ```
+
 
 # 0. Cargamos los datos y eliminamos la columna train
 ```{r}
@@ -25,6 +27,7 @@ datos <- read.delim("prostate.data.txt", header = TRUE, sep = "\t")
 # Eliminamos la columna train
 datos <- datos[, -ncol(datos)]
 ```
+
 
 # 1. Exploración de datos
 ```{r}
@@ -39,11 +42,9 @@ sum(is.na(datos))
 
 # Comprobamos si las variables estan estandarizadas
 summary(datos)
-
 dim(datos)
 names(datos)
 str(datos)
-summary(datos)
 ```
 
 - Hay 10 variables, 9 si quitamos el id del paciente
@@ -53,6 +54,7 @@ summary(datos)
 - Las variables no están ni normalizadas ni estandarizadas
 - Hay variables que están en escala logarítmica ya que algunas variables tienen valores negativos a pesar de estar definidas estrictamente positivas, como la concentración en ng/m
 
+
 # 2. Análisis de variable categóricas
 ```{r}
 # Convertimos las variables en factores
@@ -60,9 +62,20 @@ datos$svi <- as.factor(datos$svi)
 datos$gleason <- as.factor(datos$gleason)
 datos$age <- as.factor(datos$age)
 
+# Hacemos attach a los datos
+attach(datos)
+
 # Comprobamos que las variables son categóricas
 str(datos)
+
+# Comprobamos la dispersión de sus valores
+par(mfrow = c(3, 1))
+plot(svi, main = "SVI")
+plot(gleason, main = "Gleason")
+plot(age, main = "Age")
+par(mfrow = c(1, 1))
 ```
+
 
 # 3. Análisis de frecuencias
 
@@ -82,6 +95,7 @@ porcentaje
 ```
 Vemos que el porcentaje es del 38.14433%.
 
+
 - **¿Qué porcentaje de pacientes con índice svi igual a 0 tiene la puntuación de Gleason igual a 7?**
 ```{r}
 # Seleccionamos los individuos con svi igual a 0 y con gleason igual a 7 dentro de estos
@@ -94,11 +108,9 @@ porcentaje
 ```
 Vemos que el porcentaje es del 48.68421%.
 
+
 - **Estas dos variables, ¿son independientes?**
 ```{r}
-# Hacemos un attach al dataset
-attach(datos)
-
 # Creamos una tabla con las dos variables
 tabla <- table(svi, gleason)
 
@@ -116,9 +128,12 @@ heatmap.2(
 )
 ```
 Se puede ver en la gráfica que la mayoría de los casos se acumulan en zonas concretas:
+
 - Cuando SVI es 0, se acumulan en Gleason = 6 y 7.
 - Cuando SVI es 1, se acumulan en Gleason = 7.
+
 Por lo tanto, como los datos no se distribuyen por igual en todos los casos, las dos variables son dependientes.
+
 
 # 4. Regresión lineal simple
 ```{r}
@@ -145,28 +160,25 @@ abs(intervals[2, 1] - intervals[2, 2]) / recta.summary$coefficients[2, 1] * 100
 r1 <- residuals(recta)
 RSE <- sqrt(sum(r1^2) / (dim(datos)[1] - 2))
 RSE / mean(lpsa) * 100
-
-cavol <- exp(lcavol)
-psa <- exp(lpsa)
-plot(cavol, psa)
 ```
 
 Vamos a analizar el modelo lineal:
+
 - El t-value es bastante alto (12.36 y 10.55), por lo que los coeficientes están bastante alejados de ser nulos. 
 - El p-value es bastante bajo (<2e-16), lo que refuerza que los coeficientes no son nulos.
-- El coeficiente R^2 no es muy alto, por lo que quizás el modelo lineal no sea el mejor modelo al que los datos se ajusten. Como el valor es  0.5394, el modelo explica el 53.94% de la variabilidad de lpsa respecto a lcavol.
+- El coeficiente $R^2$ no es muy alto, por lo que quizás el modelo lineal no sea el mejor modelo al que los datos se ajusten. Como el valor es  0.5394, el modelo explica el 53.94% de la variabilidad de lpsa respecto a lcavol.
 - El RSE es de 0.7875. Si lo dividimos entre la media de lpsa, vemos que tendríamos un error del 31.77%, lo que indica que el modelo no es muy bueno.
 - La lontidud de los intervalos de confiana de las variables representan un 32.1% y 37.6% respecto a los valores estimados de los coeficientes. Esto es una variablilidad importante.
 
 Está claro que las variables lpsa y lcavol están relacionadas. 
-Sin embargo, aunque el p-value del ajuste lineal sea bajo, otros factores como el R^2, los residuos y los intervalos de confianza nos indican que los datos están muy dispersos respecto al modelo.
+Sin embargo, aunque el p-value del ajuste lineal sea bajo, otros factores como el $R^2$, los residuos y los intervalos de confianza nos indican que los datos están muy dispersos respecto al modelo.
 En el caso de quedarnos con el modelo, podemos pasar de un modelo lineal a un modelo de potencias, donde cavol es una potencia de psa con exponente $\beta_1$.
 $$
     \ln(lpsa) = \beta_0 + \beta_1 \ln(lcavol) \Rightarrow psa = e^{\beta_0 + \beta_1 \ln(lcavol)} = \tilde{\beta_0} cavol^{\beta_1}
 $$
 
 
-# 5. Regresión lineal multiple.
+# 5. Regresión lineal multiple
 ```{r}
 # Seleccionamos las columnas numéricas
 num_cols <- which(sapply(datos, is.numeric))
@@ -186,10 +198,10 @@ summary(rectaMul)
 
 Se puede ver en la matriz de correlación como algunas variables parecen tener cierta dependencia.
 En el caso de lpsa, parece estar relacionada con lcavol, lweight, lcp y en menor medida con pgg45. 
-Si analizamos el p-value de los coeficientes, podemos ver que solo las variables svi1, lweight y lcavol tienen valores bajos, acompañados de t-values relativamente altos. Sin embargo, los valores de R-squared y RSE son mejores que en el modelo lineal simple con lcavol, siendo de 0.6443 y 0.7071 respectivamente.
+Si analizamos el p-value de los coeficientes, podemos ver que solo las variables svi1, lweight y lcavol tienen valores bajos, acompañados de t-values relativamente altos. Sin embargo, los valores de $R^2$ y RSE son mejores que en el modelo lineal simple con lcavol, siendo de 0.6443 y 0.7071 respectivamente.
 Por lo tanto, podemos determinar que lpsa está relacionada con algunas variables y que el modelo lineal múltiple da mejores resultados que el simple, pero siguen siendo resultados con grandes errores. Además, se podrían eliminar algunas variables con las cuales no parece haber dependencia.
 
-# 6. Modelo de Ridge y Lasso.
+# 6. Modelo de Ridge y Lasso
 
 **Realizamos el modelo Rigde**
 ```{r}
@@ -289,59 +301,92 @@ rectaMul.MSE
 rectaMul.MSE / mean(y.test) * 100
 ```
 
-Podemos observar que el mejor $\lamdba$ para realizar el ajuste es $\lambda = 0.04833733$. 
+Podemos observar que el mejor $\lambda$ para realizar el ajuste es $\lambda = 0.04833733$. 
 Al comparar el modelo LASSO con el $\lambda$ óptimo y el modelo de regresión lineal múltiple, se observa cómo el valor de MSE es menor para el modelo de regresión LASSO. Comparando estos valores con la media de los valores del conjunto de testeo, se observa una mejora de aproximadamente un 1.2% (del 20.7% al 19.5%).
 
 Se puede ver como Ridge ha dado un valor de MSE un poco menor que LASSO, pero son resultados muy similares.
 
 
-# 7
-
+# 7. LDA
 ```{r}
-
-library(MASS)
-
-lda=lda(svi~ lcavol+lcp+lpsa)  
-
+# Realizamos el modelo LDA
+lda <- lda(svi ~ lcavol + lcp + lpsa)
 lda
 
-lda.pred=predict(lda)
+# Realizamos una predicción sobre el resultado de LDA
+lda.pred <- predict(lda)
 
+# Realizamos una tabla de confusión con LDA y SVI
+predicted <- lda.pred$class
+tabla.confusion.lda <- table(predicted, svi) # tabla de confusion
+tabla.confusion.lda <- round(addmargins(prop.table(tabla.confusion.lda)) * 100, 2)
+tabla.confusion.lda
 
-tabla.confusion.lda <- table(lda.pred$class,svi)  # tabla de confusion
+# Valores acertados
+tabla.confusion.lda[1,1] / tabla.confusion.lda[3,1] * 100 # Valores acertados de SVI = 0
+tabla.confusion.lda[2,2] / tabla.confusion.lda[3,2] * 100 # Valores acertados de SVI = 1
 
-#hay pocos valores no diagonales en comparacion con la diagonal, buen modelo
-
-(tabla.confusion.lda[1,2] + tabla.confusion.lda[2,1])/sum(tabla.confusion.lda) * 100 # 11.34% de datos mal clasificados
- 
+# Valores errados
+tabla.confusion.lda[1,2] / tabla.confusion.lda[1,3] * 100 # Valores errados de SVI = 0
+tabla.confusion.lda[2,1] / tabla.confusion.lda[2,3] * 100 # Valores errados de SVI = 1
 ```
-#8
 
+Se puede ver en los análisis de la tabla de confusión que el modelo LDA acierta:
+
+- Un 90.8% de las veces cuando SVI = 0.
+- Un 81.0% de las veces cuando SVI = 1.
+  
+Por otro lado, se ve que el modelo LDA falla:
+
+- Un 5.5% de las veces cuando SVI = 0.
+- Un 29.2% de las veces cuando SVI = 1.
+
+Por lo tanto, es un buen modelo a la hora de acertar, pero tiene una gran probabilidad de falso positivo en SVI = 1, prácticamente del 30%.
+
+
+# 8. Regresión Logística
 ```{r}
+# Realizamos la regresión logística
+lr <- glm(svi ~ lcavol + lcp + lpsa, family = binomial)
 
-lr<-glm(svi~ lcavol+lcp+lpsa,family=binomial)
+# Calculamos las probabilidades del modelo
+lr.probs <- predict(lr, type = "response")
 
-lr.probs<-predict(lr,type="response")
+# Calculamos las predicciones del modelo
+lr.pred <- rep(0, 97)
+lr.pred[lr.probs > .5] <- 1
 
-lr.pred<-rep(0,97)
- 
-lr.pred[lr.probs > .5]=1
+# Hacemos las tablas
+tabla.confusion.lr <- prop.table(table(lr.pred, svi)) * 100
+tabla.confusion.lr <- round(addmargins(tabla.confusion.lr), 2)
+tabla.confusion.lr
 
-table(lr.pred)
+# Realizamos los análisis de la tabla de confusión
+tabla.confusion.lr[1,1] / tabla.confusion.lr[3,1] * 100 # Valores acertados de SVI = 0
+tabla.confusion.lr[2,2] / tabla.confusion.lr[3,2] * 100 # Valores acertados de SVI = 1
+tabla.confusion.lr[1,2] / tabla.confusion.lr[1,3] * 100 # Valores errados de SVI = 0
+tabla.confusion.lr[2,1] / tabla.confusion.lr[2,3] * 100 # Valores errados de SVI = 1
 
-table(svi)
-
-# Hay 3 datos mal clasificados
-
-predict(lr,newdata = data.frame(lcavol = 2.8269,lcp=1.843, lpsa=3.285),type="response")
-
-# Prob de 0.77. bien
-
-
+# Probabilidad de svi = 1 con lcabol = 2.8269, lcp = 1.843, lpsa = 3.285
+predict(lr, newdata = data.frame(lcavol = 2.8269, lcp = 1.843, lpsa = 3.285), type = "response")
 ```
 
-#9
+El modelo de regresión logística acierta:
 
+- Un 96.1% de las veces cuando SVI = 0.
+- Un 71.4% de las veces cuando SVI = 1.
+  
+Por otro lado, el modelo de regresión logística falla:
+
+- Un 7.6% de las veces cuando SVI = 0.
+- Un 16.6% de las veces cuando SVI = 1.
+
+Se puede apreciar como el modelo es bueno para acertar en SVI = 0, y relativamente bueno para acertar en SVI = 1. Además, tiene mucho menos probabilidad de falso positivo que el modelo LDA, teniendo una probabilidad del 7% de falso positivo en SVI = 0 y 16.6% en SVI = 1.
+
+La probabilidad de SVI = 1 con lcavol = 2.8269, lcp = 1.843 y lpsa = 3.285 es del 77.1%.
+
+
+# 9. PCA-PCR
 ```{r}
 
 datos.num$svi <- as.numeric(datos$svi)
@@ -357,8 +402,5 @@ pr.out
 summary(pr.out)
 
 biplot(pr.out, scale = 0)  #biplot
-
-
-
 ```
 
