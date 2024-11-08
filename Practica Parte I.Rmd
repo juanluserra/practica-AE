@@ -16,6 +16,7 @@ library(gplots)
 library(corrplot)
 library(glmnet)
 library(MASS)
+library(pls)
 ```
 
 
@@ -91,13 +92,17 @@ Podemos ver en los gráficos anteriores las tendencias de agrupamiento en los va
 datos.gleason7 <- datos[datos$gleason == "7", ]
 datos.gleason7.svi0 <- datos.gleason7[datos.gleason7$svi == "0", ]
 
-# Vemos los pacientes que hay en datos.gleason_7_0 y en datos
+
+# Vemos los pacientes que hay en datos.gleason.7.svi0 y en gleason7
 patients.gleason7.svi0 <- nrow(datos.gleason7.svi0)
+patients.gleason7  <- nrow(datos.gleason7)
 patients <- nrow(datos.gleason7)
 
 # Dividimos la cantidad de pacientes filtrados entre el total
-porcentaje <- patients.gleason7.svi0 / patients * 100
+porcentaje <- patients.gleason7.svi0 / patients.gleason7 * 100  # creo que hay que dividir entre el los pacientes con gleason7, no los totales
 porcentaje
+
+
 ```
 Vemos que el porcentaje es del 66.07143%.
 
@@ -107,10 +112,15 @@ Vemos que el porcentaje es del 66.07143%.
 # Seleccionamos los individuos con svi igual a 0 y con gleason igual a 7 dentro de estos
 datos.svi0 <- datos[datos$svi == "0", ]
 datos.svi0.gleason7 <- datos.svi0[datos.svi0$gleason == "7", ]
-patients <- nrow(datos.svi0)
+
+###### modifico solamente las variables patients.svi0 ###################
+
+# Vemos los pacientes que hay en datos.svi0
+patients.svi0 <- nrow(datos.svi0)
+
 
 # Hacemos el porcentaje
-porcentaje <- nrow(datos.svi0.gleason7) / patients * 100
+porcentaje <- patients.gleason7.svi0 / patients.svi0 * 100
 porcentaje
 ```
 Vemos que el porcentaje es del 48.68421%.
@@ -191,7 +201,7 @@ $$
 num_cols <- which(sapply(datos, is.numeric))
 
 # Hacemos un plot de la matriz de correlación
-corrplot(cor(datos[, num_cols]), type = "upper", tl.cex = 0.5)
+corrplot::corrplot(cor(datos[, num_cols]), type = "upper", tl.cex = 0.5)
 
 # Cremos un dataframe con solo los datos numéricos
 datos.num <- datos[, c(-3, -7, -8)]
@@ -396,18 +406,75 @@ La probabilidad de SVI = 1 con lcavol = 2.8269, lcp = 1.843 y lpsa = 3.285 es de
 # 9. PCA-PCR
 ```{r}
 
-datos.num$svi <- as.numeric(datos$svi)
+datos.num
+#pregunta 1
+datos.num$svi <- as.numeric(datos$svi) # pasamos svi a numerico
 
-variables_pca <- datos.num[, c("lcavol", "lweight", "lbph", "lcp", "svi")]
+variables_pca <- c("lcavol", "lweight", "lbph", "lcp", "svi") # cogemos las variables con las que haremos pca
 
-variables_pca
+datos_pca <- datos.num[,variables_pca ]  # datos con variables pca
 
-pr.out <- prcomp(variables_pca, scale = TRUE)
+datos_pca
 
-pr.out
+pr.out <- prcomp(datos_pca, scale = TRUE)  # pca
+
+biplot(pr.out, scale = 0)  #biplot
+
+# el biplot muestra las coordenadas de cada variable en el espacio de las componentes principales, vemos que las variables que se encuentran juntas son las mas correlacionadas, como por ejemplo lcp y svi
 
 summary(pr.out)
 
-biplot(pr.out, scale = 0)  #biplot
+# en el summary se encuentran la desviacion estandar de cada componente, la proporcion de la varianza (desviacion estandar^2) de cada componente y suma acumulada de dicha varianza. Se observa que solamente el primer componente capta el 47.07% de la varianza.
+
+
+corrplot::corrplot(cor(datos_pca), type = "upper", tl.cex = 0.5)
+
+
+1.5341^2/(1.5341^2+1.1862^2+0.7258^2+0.66771^2+0.51651^2) # proportion of variance de PC1
+
+
+
+
+# pregunta 2
+
+pr.out
+
+pr.out$sdev[1]  # desviacion estandar de pc1
+
+# la desviacion estandar de pc1 es la maxima desviacion estandar que puede captarse con una combinacion lineal de las variables. las variables elegidas para combinarse linealmente han sido las mas correlacionadas: lcavol, lcp y svi, por lo que es esperable que la variabilidad (representada por la varianza) que representa la direccion de pc1, sea la mas alta de todas las combinaciones poisbles
+
+# pregunta 3
+
+
+summary(pr.out)
+
+# observando la proporcion acumulada, se ve que con los tres primeros componentes principales ya se supera el 80% de la varianza total, ya que se tiene un 85.75%.
+
+
+# ultima pregunta
+
+x.pcr<-model.matrix(lpsa ~ .,datos.num)[,-1]  # datos de entrada
+y.pcr<-datos.num$lpsa # datos de salida
+
+y.pcr.test<-y.pcr[test] #datos de salida de test
+
+pcr.fit<-pcr(lpsa ~ .,data=datos.num,subset=train,scale=TRUE,validation="CV") # regresion con componentes principales con conjunto de entrenamiento
+
+summary(pcr.fit)
+
+validationplot(pcr.fit,val.type="MSEP")  # vemos el error en funcion del numero de componentes principales,con n=5 el error es bajo
+
+
+pcr.pred <- predict(pcr.fit, x.pcr[test, ], ncomp = 5) # predecimos con conjunto de test
+pcr.MSE <- mean((pcr.pred- y.pcr.test)^2)  # comparamos resultado con datos de salida de test
+
+pcr.MSE
+ridge.MSE
+lasso.MSE
+rectaMul.MSE
+
+# el MSE usando PCR es mayor que Lasso y Ridge, pero ligeramente menor que el de la regresión múltiple, por lo que si que es mejor que la del apartado 5, al menos con  n= 5 componentes principales
+
+
 ```
 
