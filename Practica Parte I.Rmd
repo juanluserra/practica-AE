@@ -51,8 +51,8 @@ str(datos)
 - Las variables son numéricas
 - La variable correspondiente al identificador del paciente es la primera columna
 - No hay valores nulos
-- Las variables no están ni normalizadas ni estandarizadas
-- Hay variables que están en escala logarítmica ya que algunas variables tienen valores negativos a pesar de estar definidas estrictamente positivas, como la concentración en ng/m
+- Las variables no están ni normalizadas ni estandarizadas. No es necesario normalizarlas en este caso.
+- Pueden haber variables en escala logarítmica porque dependan de otras de forma exponencial o de potencias, de forma que pasen a tener expresiones lineales respecto a estas. También puede ser que tengan valores de órdenes de magnitud muy diferentes, haciendo que sean más fáciles de tratar en escala logarítmica.
 
 
 # 2. Análisis de variable categóricas
@@ -70,11 +70,17 @@ str(datos)
 
 # Comprobamos la dispersión de sus valores
 par(mfrow = c(3, 1))
-plot(svi, main = "SVI")
-plot(gleason, main = "Gleason")
-plot(age, main = "Age")
+plot(svi, main = "SVI", ylab = "Frecuencia")
+plot(gleason, main = "Gleason", ylab = "Frecuencia")
+plot(age, main = "Age", ylab = "Frecuencia")
 par(mfrow = c(1, 1))
 ```
+
+Podemos ver en los gráficos anteriores las tendencias de agrupamiento en los valores de las variables. 
+
+- En SVI la mayoría de los datos se concentran en SVI = 0.
+- En Gleason la mayoría de los datos se acumulan en 7, mientras que apenas tenemos muestra en 8.
+- En Age las datos se agrupan alrededor 64 y disminuyen al alejarse, aunque el valor 68 dispone de una cantidad de muestras por encima de lo normal.
 
 
 # 3. Análisis de frecuencias
@@ -87,13 +93,13 @@ datos.gleason7.svi0 <- datos.gleason7[datos.gleason7$svi == "0", ]
 
 # Vemos los pacientes que hay en datos.gleason_7_0 y en datos
 patients.gleason7.svi0 <- nrow(datos.gleason7.svi0)
-patients <- nrow(datos)
+patients <- nrow(datos.gleason7)
 
 # Dividimos la cantidad de pacientes filtrados entre el total
 porcentaje <- patients.gleason7.svi0 / patients * 100
 porcentaje
 ```
-Vemos que el porcentaje es del 38.14433%.
+Vemos que el porcentaje es del 66.07143%.
 
 
 - **¿Qué porcentaje de pacientes con índice svi igual a 0 tiene la puntuación de Gleason igual a 7?**
@@ -101,9 +107,10 @@ Vemos que el porcentaje es del 38.14433%.
 # Seleccionamos los individuos con svi igual a 0 y con gleason igual a 7 dentro de estos
 datos.svi0 <- datos[datos$svi == "0", ]
 datos.svi0.gleason7 <- datos.svi0[datos.svi0$gleason == "7", ]
+patients <- nrow(datos.svi0)
 
 # Hacemos el porcentaje
-porcentaje <- nrow(datos.svi0.gleason7) / nrow(datos.svi0) * 100
+porcentaje <- nrow(datos.svi0.gleason7) / patients * 100
 porcentaje
 ```
 Vemos que el porcentaje es del 48.68421%.
