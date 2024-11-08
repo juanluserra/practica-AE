@@ -31,29 +31,50 @@ datos <- datos[, -ncol(datos)]
 
 
 # 1. Exploración de datos
+**¿Cuántas variables hay?**
 ```{r}
 # Vemos las variables que hay
 ncol(datos)
+```
+Vemos que hay 10 variables.
 
-# Eliminamos la columna id
-datos <- datos[, -1]
 
-# Comprobamos si hay NA
-sum(is.na(datos))
-
-# Comprobamos si las variables estan estandarizadas
-summary(datos)
-dim(datos)
-names(datos)
+**¿De qué clase son?**
+```{r}
+# Vemos la clase de las variables
 str(datos)
 ```
+Vemos que son variables numéricas.
 
-- Hay 10 variables, 9 si quitamos el id del paciente
-- Las variables son numéricas
-- La variable correspondiente al identificador del paciente es la primera columna
-- No hay valores nulos
-- Las variables no están ni normalizadas ni estandarizadas. No es necesario normalizarlas en este caso.
-- Pueden haber variables en escala logarítmica porque dependan de otras de forma exponencial o de potencias, de forma que pasen a tener expresiones lineales respecto a estas. También puede ser que tengan valores de órdenes de magnitud muy diferentes, haciendo que sean más fáciles de tratar en escala logarítmica.
+**¿Hay una variable que correspondiente al identificador de paciente? Si es así, elimínala.**
+```{r}
+# Como hay una variable Id, llamada "X", la eliminamos
+datos <- datos[, -1]
+```
+La variable $X$ era la Id de los pacientes. Tras eliminarla quedan 9 varaibles.
+
+**¿Hay valores nulos en alguno de los ficheros?**
+```{r}
+# Comprobamos si hay NA
+sum(is.na(datos))
+```
+No hay valores nulos.
+
+**¿Están estandarizadas las variables? En este punto del análisis, ¿es necesario normalizarlas?**
+```{r}
+# Comprobamos si las variables estan estandarizadas
+summary(datos)
+```
+Vemos que las variables no están estandarizadas, ya que no tienen media 0 ni desviación 1. 
+No hace falta normalizarlas en este caso.
+
+**¿Por qué crees que algunas variables están es escala logarítmica?**
+
+Algunas variables pueden estar en escala logarítmica para reducir 
+relaciones de potencias y exponenciales entre dos variables a relaciones lineales,
+para así poder realizar regresiones lineales. Otra razón puede ser que estas variables
+tomen valores de órdenes de magnitud muy diferentes, simplificando su tratamiento al 
+hacer el logaritmo.
 
 
 # 2. Análisis de variable categóricas
@@ -86,28 +107,25 @@ Podemos ver en los gráficos anteriores las tendencias de agrupamiento en los va
 
 # 3. Análisis de frecuencias
 
-- **¿Qué porcentaje de pacientes con la puntuación de Gleason igual a 7, presenta índice igual svi igual a 0?**
+**¿Qué porcentaje de pacientes con la puntuación de Gleason igual a 7, presenta índice igual svi igual a 0?**
 ```{r}
 # Seleccionamos los pacientes con la puntuación de Gleason igual a 7 y los que tienen svi igual a 0 dentro de estos
 datos.gleason7 <- datos[datos$gleason == "7", ]
 datos.gleason7.svi0 <- datos.gleason7[datos.gleason7$svi == "0", ]
 
-
 # Vemos los pacientes que hay en datos.gleason.7.svi0 y en gleason7
 patients.gleason7.svi0 <- nrow(datos.gleason7.svi0)
-patients.gleason7  <- nrow(datos.gleason7)
+patients.gleason7 <- nrow(datos.gleason7)
 patients <- nrow(datos.gleason7)
 
 # Dividimos la cantidad de pacientes filtrados entre el total
-porcentaje <- patients.gleason7.svi0 / patients.gleason7 * 100  # creo que hay que dividir entre el los pacientes con gleason7, no los totales
+porcentaje <- patients.gleason7.svi0 / patients.gleason7 * 100 # creo que hay que dividir entre el los pacientes con gleason7, no los totales
 porcentaje
-
-
 ```
 Vemos que el porcentaje es del 66.07143%.
 
 
-- **¿Qué porcentaje de pacientes con índice svi igual a 0 tiene la puntuación de Gleason igual a 7?**
+**¿Qué porcentaje de pacientes con índice svi igual a 0 tiene la puntuación de Gleason igual a 7?**
 ```{r}
 # Seleccionamos los individuos con svi igual a 0 y con gleason igual a 7 dentro de estos
 datos.svi0 <- datos[datos$svi == "0", ]
@@ -126,7 +144,7 @@ porcentaje
 Vemos que el porcentaje es del 48.68421%.
 
 
-- **Estas dos variables, ¿son independientes?**
+**Estas dos variables, ¿son independientes?**
 ```{r}
 # Creamos una tabla con las dos variables
 tabla <- table(svi, gleason)
@@ -153,46 +171,84 @@ Por lo tanto, como los datos no se distribuyen por igual en todos los casos, las
 
 
 # 4. Regresión lineal simple
+
+**El plot de los datos junto a la recta de regresión.**
 ```{r}
 # Realizamos el modelo lineal
 recta <- lm(lpsa ~ lcavol)
 
-# Vemos el modelo
-recta.summary <- summary(recta)
-recta.summary
-
 # Representamos el modelo sobre los datos
 plot(lcavol, lpsa, main = "lpsa vs lcavol")
 abline(recta, col = "red")
+```
 
+**Intervalos de confianza para los coeficientes del modelo con una confianza de 0.95.**
+```{r}
 # Realizamos el intervalo de confianza al 95%
 intervals <- confint(recta, level = 0.95)
 intervals
+```
+
+**Definición de RSE y su valor.**
+
+Por definición, el $RSE$ es la suma de los cuadrados de los residuos:
+$$
+RSE = \sqrt{\frac{\sum_{i=1}^{n} (y_i - \hat{y_i})^2}{n - 2}}
+$$
+donde $y_i - \hat{y_i}$ son los residuos.
+```{r}
+# Calculamos la suma de cuadrados de los residuos (RSE)
+r1 <- residuals(recta)
+RSE <- sqrt(sum(r1^2) / (dim(datos)[1] - 2))
+RSE
+```
+EL RSE vale 0.7874996.
+
+**Estudio de la eficacia del modelo.**
+```{r}
+# Vemos el resumen del modelo
+recta.summary <- summary(recta)
+recta.summary
 
 # Calculamos el porcentaje de variación relativo de los intervalos de confianza respecto al valor predicho de los coeficientes
 abs(intervals[1, 1] - intervals[1, 2]) / recta.summary$coefficients[1, 1] * 100
 abs(intervals[2, 1] - intervals[2, 2]) / recta.summary$coefficients[2, 1] * 100
 
-# Calculamos la suma de cuadrados de los residuos (RSE)
-r1 <- residuals(recta)
-RSE <- sqrt(sum(r1^2) / (dim(datos)[1] - 2))
+# Calculamos el porcentaje de error que hay respecto a la media de lpsa
 RSE / mean(lpsa) * 100
 ```
+Se puede ver en el modelo lineal que los p-value toman valores muy pequeños (menores a 2e-16). 
+Además, el t-value toma valores mayores a 10 (10.55 y 12.36). Estas dos cosas parecen indicarnos
+que los coeficientes del modelo lineal no son nulos, por lo que las variables están relacionadas.
 
-Vamos a analizar el modelo lineal:
+Sin embargo, el valor $R^2$ vale 0.5394, por lo que solo el 53.94% de la variación de lpsa es explicada por lcavol.
+El RSE es de 0.7875, que al compararlo con la media de lpsa, vemos que hay un 31.77% de error, que no es poco.
+Además, los intervalos de confianza son:
 
-- El t-value es bastante alto (12.36 y 10.55), por lo que los coeficientes están bastante alejados de ser nulos. 
-- El p-value es bastante bajo (<2e-16), lo que refuerza que los coeficientes no son nulos.
-- El coeficiente $R^2$ no es muy alto, por lo que quizás el modelo lineal no sea el mejor modelo al que los datos se ajusten. Como el valor es  0.5394, el modelo explica el 53.94% de la variabilidad de lpsa respecto a lcavol.
-- El RSE es de 0.7875. Si lo dividimos entre la media de lpsa, vemos que tendríamos un error del 31.77%, lo que indica que el modelo no es muy bueno.
-- La lontidud de los intervalos de confiana de las variables representan un 32.1% y 37.6% respecto a los valores estimados de los coeficientes. Esto es una variablilidad importante.
+- (1.2652222, 1.7493727) para el valor de $\beta_0 = 1.50730$.
+- (0.5839404, 0.8547004) para el valor de $\beta_1 = 0.71932$.
 
-Está claro que las variables lpsa y lcavol están relacionadas. 
-Sin embargo, aunque el p-value del ajuste lineal sea bajo, otros factores como el $R^2$, los residuos y los intervalos de confianza nos indican que los datos están muy dispersos respecto al modelo.
-En el caso de quedarnos con el modelo, podemos pasar de un modelo lineal a un modelo de potencias, donde cavol es una potencia de psa con exponente $\beta_1$.
+Si comparamos estos intervalos de confianza con los valores predichos de los coeficientes:
+
+- Para el valor $\beta_0$ hay una variación del 32.12%.
+- Para el valor $\beta_1$ hay una variación del 37.64%.
+
+En resumen, los valores de p-value y t-value nos indican que las variables efectivamente tienen relación.
+Sin embargo, el resto de resultados del análisis nos dicen que el modelo lineal no es muy bueno para este caso,
+y que no tiene un gran desempeño.
+
+**Interpretación. El modelo lineal calculado, ¿cómo lo interpretas? Concretamente, ¿cómo a través del modelo lineal llegas a otro que relacionan las variables cavol y psa (sin los log. neperianos)?**
+
+El modelo lineal tiene una pendietne positiva, lo que nos indica que la variable lpsa aumentará junto con lcavol.
+Dado que estas variables son logaritmos, podemos obtener una relación no lineal entre ellas haciendo la exponencial.
 $$
-    \ln(lpsa) = \beta_0 + \beta_1 \ln(lcavol) \Rightarrow psa = e^{\beta_0 + \beta_1 \ln(lcavol)} = \tilde{\beta_0} cavol^{\beta_1}
+    \ln(psa) = \beta_0 + \beta_1 \ln(cavol) \Rightarrow psa = e^{\beta_0 + \beta_1 \ln(cavol)} = e^{\beta_0} cavol^{\beta_1}
 $$
+Podemos ver como a partir de la relación entre los logaritmos se ha obtenido una relacón de potencias.
+En esta relación, la variable psa será una potencia de cavol con exponente $\beta_1$, y la variable $\beta_0$ 
+intervendrá en la proporcionalidad de estas psa y la potencia de cavol. Como $\beta_0 > 0$, la constante de 
+proporcionalidad será mayor que 1, y como $\beta_1$ está entre 0 y 1, la relación te potencias será como
+una raíz de valor $1/\beta_1 \approx 1.4$.
 
 
 # 5. Regresión lineal multiple
@@ -215,8 +271,15 @@ summary(rectaMul)
 
 Se puede ver en la matriz de correlación como algunas variables parecen tener cierta dependencia.
 En el caso de lpsa, parece estar relacionada con lcavol, lweight, lcp y en menor medida con pgg45. 
-Si analizamos el p-value de los coeficientes, podemos ver que solo las variables svi1, lweight y lcavol tienen valores bajos, acompañados de t-values relativamente altos. Sin embargo, los valores de $R^2$ y RSE son mejores que en el modelo lineal simple con lcavol, siendo de 0.6443 y 0.7071 respectivamente.
-Por lo tanto, podemos determinar que lpsa está relacionada con algunas variables y que el modelo lineal múltiple da mejores resultados que el simple, pero siguen siendo resultados con grandes errores. Además, se podrían eliminar algunas variables con las cuales no parece haber dependencia.
+Si analizamos el p-value de los coeficientes, podemos ver que solo las variables svi1, lweight y 
+lcavol tienen valores bajos, acompañados de t-values relativamente altos. 
+
+Sin embargo, los valores de $R^2$ y RSE son mejores que en el modelo lineal simple con lcavol, 
+siendo de 0.6443 y 0.7071 respectivamente. Por lo tanto, podemos determinar que lpsa está relacionada 
+con algunas variables y que el modelo lineal múltiple da mejores resultados que el simple, pero 
+siguen siendo resultados con grandes errores. Además, se podrían eliminar algunas variables 
+con las cuales no parece haber dependencia.
+
 
 # 6. Modelo de Ridge y Lasso
 
@@ -245,7 +308,7 @@ malla.ridge.train <- glmnet(x.train, y.train, alpha = 0, lambda = malla) # regre
 
 # Representamos los valores de los coeficientes a lo largo del valor lambda
 plot(malla.ridge.train, xvar = "lambda")
-legend("topright", lty = 1, col = 2:ncol(datos.num)-1, legend = names(datos.num[-ncol(datos.num)]))
+legend("topright", lty = 1, col = 2:ncol(datos.num) - 1, legend = names(datos.num[-ncol(datos.num)]))
 
 # Realizamos una regresión Ridge con CV
 cv.out.ridge.train <- cv.glmnet(x.train, y.train, alpha = 0)
@@ -259,7 +322,7 @@ ridge.train <- glmnet(x.train, y.train, alpha = 0, lambda = bestlam.ridge.train)
 coef(ridge.train)[, 1]
 
 # Realizamos una regresión múltiple con los datos de entrenamiento
-rectaMul.train <- glmnet(x.train, y.train, alpha = 0, lambda = 0) 
+rectaMul.train <- glmnet(x.train, y.train, alpha = 0, lambda = 0)
 coef(rectaMul.train)[, 1]
 
 # Realizamos una gráfica para ver el MSE de los ajustes para cada valor de lambda
@@ -279,7 +342,11 @@ rectMul.MSE / mean(y.test) * 100
 ```
  
 Tras realizar la validación cruzada, podemos ver como el mejor $\lambda$ es $\lambda = 0.1997304$. 
-Al comparar el modelo Ridge con el $\lambda$ óptimo y el modelo de regresión lineal múltiple, se observa cómo el valor de MSE es menor para el modelo de regresión Ridge. Comparando estos valores con la media de los valores del conjunto de testeo, se observa una mejora de aproximadamente un 1.4% (del 20.7% al 19.3%).
+
+Al comparar el modelo Ridge con el $\lambda$ óptimo y el modelo de regresión lineal múltiple, 
+se observa cómo el valor de MSE es menor para el modelo de regresión Ridge. Comparando estos 
+valores con la media de los valores del conjunto de testeo, se observa una mejora de 
+aproximadamente un 1.4% (del 20.7% al 19.3%).
 
 
 **Realizamos el modelo Lasso**
@@ -319,9 +386,14 @@ rectaMul.MSE / mean(y.test) * 100
 ```
 
 Podemos observar que el mejor $\lambda$ para realizar el ajuste es $\lambda = 0.04833733$. 
-Al comparar el modelo LASSO con el $\lambda$ óptimo y el modelo de regresión lineal múltiple, se observa cómo el valor de MSE es menor para el modelo de regresión LASSO. Comparando estos valores con la media de los valores del conjunto de testeo, se observa una mejora de aproximadamente un 1.2% (del 20.7% al 19.5%).
 
-Se puede ver como Ridge ha dado un valor de MSE un poco menor que LASSO, pero son resultados muy similares.
+Al comparar el modelo LASSO con el $\lambda$ óptimo y el modelo de regresión lineal múltiple, 
+se observa cómo el valor de MSE es menor para el modelo de regresión LASSO. Comparando estos valores 
+con la media de los valores del conjunto de testeo, se observa una mejora de aproximadamente 
+un 1.2% (del 20.7% al 19.5%).
+
+Se puede apreciar como Ridge ha dado un valor de MSE un poco menor que LASSO.
+Sin embargo, ambos modelos tienen un buen desempeño con resultados muy similares.
 
 
 # 7. LDA
@@ -340,12 +412,12 @@ tabla.confusion.lda <- round(addmargins(prop.table(tabla.confusion.lda)) * 100, 
 tabla.confusion.lda
 
 # Valores acertados
-tabla.confusion.lda[1,1] / tabla.confusion.lda[3,1] * 100 # Valores acertados de SVI = 0
-tabla.confusion.lda[2,2] / tabla.confusion.lda[3,2] * 100 # Valores acertados de SVI = 1
+tabla.confusion.lda[1, 1] / tabla.confusion.lda[3, 1] * 100 # Valores acertados de SVI = 0
+tabla.confusion.lda[2, 2] / tabla.confusion.lda[3, 2] * 100 # Valores acertados de SVI = 1
 
 # Valores errados
-tabla.confusion.lda[1,2] / tabla.confusion.lda[1,3] * 100 # Valores errados de SVI = 0
-tabla.confusion.lda[2,1] / tabla.confusion.lda[2,3] * 100 # Valores errados de SVI = 1
+tabla.confusion.lda[1, 2] / tabla.confusion.lda[1, 3] * 100 # Valores errados de SVI = 0
+tabla.confusion.lda[2, 1] / tabla.confusion.lda[2, 3] * 100 # Valores errados de SVI = 1
 ```
 
 Se puede ver en los análisis de la tabla de confusión que el modelo LDA acierta:
@@ -358,7 +430,8 @@ Por otro lado, se ve que el modelo LDA falla:
 - Un 5.5% de las veces cuando SVI = 0.
 - Un 29.2% de las veces cuando SVI = 1.
 
-Por lo tanto, es un buen modelo a la hora de acertar, pero tiene una gran probabilidad de falso positivo en SVI = 1, prácticamente del 30%.
+Por lo tanto, es un buen modelo a la hora de acertar, pero tiene una 
+gran probabilidad de falso positivo en SVI = 1, prácticamente del 30%.
 
 
 # 8. Regresión Logística
@@ -379,10 +452,10 @@ tabla.confusion.lr <- round(addmargins(tabla.confusion.lr), 2)
 tabla.confusion.lr
 
 # Realizamos los análisis de la tabla de confusión
-tabla.confusion.lr[1,1] / tabla.confusion.lr[3,1] * 100 # Valores acertados de SVI = 0
-tabla.confusion.lr[2,2] / tabla.confusion.lr[3,2] * 100 # Valores acertados de SVI = 1
-tabla.confusion.lr[1,2] / tabla.confusion.lr[1,3] * 100 # Valores errados de SVI = 0
-tabla.confusion.lr[2,1] / tabla.confusion.lr[2,3] * 100 # Valores errados de SVI = 1
+tabla.confusion.lr[1, 1] / tabla.confusion.lr[3, 1] * 100 # Valores acertados de SVI = 0
+tabla.confusion.lr[2, 2] / tabla.confusion.lr[3, 2] * 100 # Valores acertados de SVI = 1
+tabla.confusion.lr[1, 2] / tabla.confusion.lr[1, 3] * 100 # Valores errados de SVI = 0
+tabla.confusion.lr[2, 1] / tabla.confusion.lr[2, 3] * 100 # Valores errados de SVI = 1
 
 # Probabilidad de svi = 1 con lcabol = 2.8269, lcp = 1.843, lpsa = 3.285
 predict(lr, newdata = data.frame(lcavol = 2.8269, lcp = 1.843, lpsa = 3.285), type = "response")
@@ -398,83 +471,116 @@ Por otro lado, el modelo de regresión logística falla:
 - Un 7.6% de las veces cuando SVI = 0.
 - Un 16.6% de las veces cuando SVI = 1.
 
-Se puede apreciar como el modelo es bueno para acertar en SVI = 0, y relativamente bueno para acertar en SVI = 1. Además, tiene mucho menos probabilidad de falso positivo que el modelo LDA, teniendo una probabilidad del 7% de falso positivo en SVI = 0 y 16.6% en SVI = 1.
+Se puede apreciar como el modelo es bueno para acertar en SVI = 0, y 
+relativamente bueno para acertar en SVI = 1. Además, tiene mucho menos 
+probabilidad de falso positivo que el modelo LDA, teniendo una 
+probabilidad del 7% de falso positivo en SVI = 0 y 16.6% en SVI = 1.
 
 La probabilidad de SVI = 1 con lcavol = 2.8269, lcp = 1.843 y lpsa = 3.285 es del 77.1%.
 
 
 # 9. PCA-PCR
+
+**Un biplot y summary del modelo. Coméntalos.**
 ```{r}
+# Convertimos los datos SVI en numéricos
+datos.num$svi <- as.numeric(datos$svi)
 
-datos.num
-#pregunta 1
-datos.num$svi <- as.numeric(datos$svi) # pasamos svi a numerico
+# Seleccionamos las variables con las que hacer el PCA
+variables_pca <- c("lcavol", "lweight", "lbph", "lcp", "svi")
 
-variables_pca <- c("lcavol", "lweight", "lbph", "lcp", "svi") # cogemos las variables con las que haremos pca
+# Seleccionamos los datos con las variables para el PCA
+datos_pca <- datos.num[, variables_pca]
 
-datos_pca <- datos.num[,variables_pca ]  # datos con variables pca
+# Realizamos el PCA
+pr.out <- prcomp(datos_pca, scale = TRUE)
 
-datos_pca
+# Representamos el PCA con un biplot
+biplot(pr.out, scale = 0)
 
-pr.out <- prcomp(datos_pca, scale = TRUE)  # pca
-
-biplot(pr.out, scale = 0)  #biplot
-
-# el biplot muestra las coordenadas de cada variable en el espacio de las componentes principales, vemos que las variables que se encuentran juntas son las mas correlacionadas, como por ejemplo lcp y svi
-
+# Hacemos un resumen del PCA
 summary(pr.out)
+```
 
-# en el summary se encuentran la desviacion estandar de cada componente, la proporcion de la varianza (desviacion estandar^2) de cada componente y suma acumulada de dicha varianza. Se observa que solamente el primer componente capta el 47.07% de la varianza.
+En el biplot vemos dos grupos de flechas. Vemos que los vectores de 
+lbph y de lweight están relativamente cerca, apuntando hacia la direción de 
+PC2 con unos grados de desviación en sentido horario. Por otro lado, tenemos el grupo 
+de lcavol, lcp y svi, que estan cerca unos de otros apuntando positivamente en el
+eje de PC1, con unos grados de desviación en sentido horario. La variable que más
+alineada está con PC1 es lcavol, y la más alineada con PC2 es lbph. Que varios vectores
+de variables estén juntos indican que estas están correlacionadas entre sí, por lo que
+lpbh y lweight tinen relación entre sí, al igual que lcavol, lcp y svi, pero estos dos 
+grupos no están correlacionados.
+
+Si analizamos los resultados del `summary`, vemos que PC1 explica el 47% de la varianza,
+y que PC2 explica el 28%, siendo por tanto las variables más importantes del PCA.
+Con estas dos variables se puede explicar el 75% de la varianza. El hecho de que PC1 
+explique casi la mitad de la varianza, hace que las variables que están relacionadas 
+con PC1 (lcavol, lcp y svi) sean las más importantes (sobre todo lcavol). 
 
 
+**Justificar la desviación estándar del primer componente principal.**
+```{r}
+# Representamos la matriz de correlación con los datos del PCA
 corrplot::corrplot(cor(datos_pca), type = "upper", tl.cex = 0.5)
 
+# Mostramos la desviación estándar del PCA
+pr.out$sdev
 
-1.5341^2/(1.5341^2+1.1862^2+0.7258^2+0.66771^2+0.51651^2) # proportion of variance de PC1
+# Calculamos la proporcion de la varianza de la componente PC1
+1.5341^2 / (1.5341^2 + 1.1862^2 + 0.7258^2 + 0.66771^2 + 0.51651^2)
+```
+Se puede ver como el cálculo de la desviación estándar de la componente PC1 es correcto.
+Como se menciona anteriormente, esta componente explica casi el 50% de toda la varianza.
 
+Si ahora nos fijamos en la matriz de correlación, vemos como efectivamente las variables
+lcavol, lcp y svi tienen una correlación alta. Como estas tres variables están áltamente
+correlacionadas y apuntan en la dirección de PC1, no es de extrañar que la varianza de PC1
+sea la más alta.
 
-
-
-# pregunta 2
-
-pr.out
-
-pr.out$sdev[1]  # desviacion estandar de pc1
-
-# la desviacion estandar de pc1 es la maxima desviacion estandar que puede captarse con una combinacion lineal de las variables. las variables elegidas para combinarse linealmente han sido las mas correlacionadas: lcavol, lcp y svi, por lo que es esperable que la variabilidad (representada por la varianza) que representa la direccion de pc1, sea la mas alta de todas las combinaciones poisbles
-
-# pregunta 3
-
-
+**Tras la proporción de varianza acumulada, ¿cuáles son las componentes principales que reflejan el 80% de la varianza total de los datos?**
+```{r}
+# Hacemos un resumen del PCA
 summary(pr.out)
+```
+Se puede ver en el resumen como las tres primeras componentes principales
+(PC1, PC2 y PC3) reflejan más del 80% de la varianza total de los datos (el 85.75%).
 
-# observando la proporcion acumulada, se ve que con los tres primeros componentes principales ya se supera el 80% de la varianza total, ya que se tiene un 85.75%.
+**Además, aplica PCR para predecir lpsa teniendo en cuenta las variables lcavol, lweight, lbph, lcp, svi. ¿Qué conclusiones podrías sacar?¿Este modelo es mejor que el del apartado 5?**
+```{r}
+# Creamos variables con los datos
+x.pcr <- model.matrix(lpsa ~ ., datos.num)[, -1] # datos de entrada
+y.pcr <- datos.num$lpsa # datos de salida
 
+# Creamos un conjunto de testeo
+y.pcr.test <- y.pcr[test]
 
-# ultima pregunta
+# Hacemos una regesión de componentes principales (PCR) con el conjunto de entrenamiento
+pcr.fit <- pcr(lpsa ~ ., data = datos.num, subset = train, scale = TRUE, validation = "CV")
 
-x.pcr<-model.matrix(lpsa ~ .,datos.num)[,-1]  # datos de entrada
-y.pcr<-datos.num$lpsa # datos de salida
-
-y.pcr.test<-y.pcr[test] #datos de salida de test
-
-pcr.fit<-pcr(lpsa ~ .,data=datos.num,subset=train,scale=TRUE,validation="CV") # regresion con componentes principales con conjunto de entrenamiento
-
+# Hacemos un resumen de la regresión
 summary(pcr.fit)
 
-validationplot(pcr.fit,val.type="MSEP")  # vemos el error en funcion del numero de componentes principales,con n=5 el error es bajo
+# Vemos el error en funcion del numero de componentes principales
+validationplot(pcr.fit, val.type = "MSEP")
 
-
+# Hacemos predicciones con el conjunto de testeo y calculamos el MSE
 pcr.pred <- predict(pcr.fit, x.pcr[test, ], ncomp = 5) # predecimos con conjunto de test
-pcr.MSE <- mean((pcr.pred- y.pcr.test)^2)  # comparamos resultado con datos de salida de test
+pcr.MSE <- mean((pcr.pred - y.pcr.test)^2) # comparamos resultado con datos de salida de test
 
 pcr.MSE
 ridge.MSE
 lasso.MSE
 rectaMul.MSE
-
-# el MSE usando PCR es mayor que Lasso y Ridge, pero ligeramente menor que el de la regresión múltiple, por lo que si que es mejor que la del apartado 5, al menos con  n= 5 componentes principales
-
-
 ```
+Se puede ver en el gráfico como el error del PCR es menor conforme se aumenta
+el número de componentes, siendo su mínimo en 5 componentes. 
 
+Si comparamos el MSE de las predicciones con n = 5 con los modelos anteriores,
+vemos que Ridge y LASSO tienen el MSE más bajo (alrededor de 0.46). 
+Por otro lado, la regresión múltiple y el PCR tienen valores de MSE más altos,
+alrededor de 0.49. 
+
+En conclusión, los modelos que mejor predicen las observaciones son Ridge y LASSO.
+Mientras, la regresión múltiple y el PCR tienen resultados muy parecidos, con MSE 
+más altos.

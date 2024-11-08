@@ -1,3 +1,6 @@
+# Linter files
+.lintr
+
 # History files
 .Rhistory
 .Rapp.history
