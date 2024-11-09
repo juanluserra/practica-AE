@@ -1,6 +1,6 @@
 ---
-title: "Práctica AE"
-author: "Antonio Galián Gálvez"
+title: "Práctica Parte I Aprendizaje Estadístico"
+author: "Antonio Galián Gálvez, Juan Luis Serradilla Tormos"
 date: "2024-10-28"
 output: pdf_document
 ---
