@@ -116,7 +116,6 @@ datos.gleason7.svi0 <- datos.gleason7[datos.gleason7$svi == "0", ]
 # Vemos los pacientes que hay en datos.gleason.7.svi0 y en gleason7
 patients.gleason7.svi0 <- nrow(datos.gleason7.svi0)
 patients.gleason7 <- nrow(datos.gleason7)
-patients <- nrow(datos.gleason7)
 
 # Dividimos la cantidad de pacientes filtrados entre el total
 porcentaje <- patients.gleason7.svi0 / patients.gleason7 * 100 # creo que hay que dividir entre el los pacientes con gleason7, no los totales
@@ -131,11 +130,8 @@ Vemos que el porcentaje es del 66.07143%.
 datos.svi0 <- datos[datos$svi == "0", ]
 datos.svi0.gleason7 <- datos.svi0[datos.svi0$gleason == "7", ]
 
-###### modifico solamente las variables patients.svi0 ###################
-
 # Vemos los pacientes que hay en datos.svi0
 patients.svi0 <- nrow(datos.svi0)
-
 
 # Hacemos el porcentaje
 porcentaje <- patients.gleason7.svi0 / patients.svi0 * 100
@@ -153,7 +149,7 @@ tabla <- table(svi, gleason)
 addmargins(prop.table(tabla, 1), 2) * 100
 addmargins(prop.table(tabla, 2), 1) * 100
 
-# Realizamos un gráfico de la tabla para visualizar mejor la Independencia
+# Realizamos un gráfico de la tabla para visualizar mejor la independencia
 heatmap.2(
     prop.table(tabla),
     xlab = "Gleason", ylab = "SVI",
@@ -244,7 +240,7 @@ Dado que estas variables son logaritmos, podemos obtener una relación no lineal
 $$
     \ln(psa) = \beta_0 + \beta_1 \ln(cavol) \Rightarrow psa = e^{\beta_0 + \beta_1 \ln(cavol)} = e^{\beta_0} cavol^{\beta_1}
 $$
-Podemos ver como a partir de la relación entre los logaritmos se ha obtenido una relacón de potencias.
+Podemos ver como a partir de la relación entre los logaritmos se ha obtenido una relación de potencias.
 En esta relación, la variable psa será una potencia de cavol con exponente $\beta_1$, y la variable $\beta_0$ 
 intervendrá en la proporcionalidad de estas psa y la potencia de cavol. Como $\beta_0 > 0$, la constante de 
 proporcionalidad será mayor que 1, y como $\beta_1$ está entre 0 y 1, la relación te potencias será como
@@ -283,7 +279,7 @@ con las cuales no parece haber dependencia.
 
 # 6. Modelo de Ridge y Lasso
 
-**Realizamos el modelo Rigde**
+**Realizamos el modelo Ridge**
 ```{r}
 # Seleccionamos los datos para realizar los modelos
 x <- model.matrix(lpsa ~ ., datos.num)[, -1]
@@ -302,7 +298,7 @@ x.test <- x[test, ]
 y.test <- y[test]
 y.train <- y[train]
 
-# Hacemos una malla con los valore de lambda
+# Hacemos una malla con los valores de lambda
 malla <- 10^seq(10, -2, length = 100)
 malla.ridge.train <- glmnet(x.train, y.train, alpha = 0, lambda = malla) # regresion ridge sin CV con conjunto de entrenamiento
 
@@ -328,7 +324,7 @@ coef(rectaMul.train)[, 1]
 # Realizamos una gráfica para ver el MSE de los ajustes para cada valor de lambda
 plot(cv.out.ridge.train)
 
-# Hacemos una predicción del Ridge para sacar los valores del MSE
+# Hacemos una predicción de Ridge para sacar los valores del MSE
 ridge.pred <- predict(ridge.train, newx = x.test) # predicion de 'ridge.train' en conjunto de testeo
 ridge.MSE <- mean((ridge.pred - y.test)^2) # MSE estimado de Ridge
 
@@ -474,7 +470,7 @@ Por otro lado, el modelo de regresión logística falla:
 Se puede apreciar como el modelo es bueno para acertar en SVI = 0, y 
 relativamente bueno para acertar en SVI = 1. Además, tiene mucho menos 
 probabilidad de falso positivo que el modelo LDA, teniendo una 
-probabilidad del 7% de falso positivo en SVI = 0 y 16.6% en SVI = 1.
+probabilidad del 7.6% de falso positivo en SVI = 0 y 16.6% en SVI = 1.
 
 La probabilidad de SVI = 1 con lcavol = 2.8269, lcp = 1.843 y lpsa = 3.285 es del 77.1%.
 
@@ -546,6 +542,31 @@ summary(pr.out)
 Se puede ver en el resumen como las tres primeras componentes principales
 (PC1, PC2 y PC3) reflejan más del 80% de la varianza total de los datos (el 85.75%).
 
+
+También se pueden observar estas proporciones de manera más visual.
+
+```{r}
+
+# Proportion of Variance Explained
+pve <-  pr.out$sdev^2/sum(pr.out$sdev^2)
+
+# Creamos dos gráficas
+par(mfrow = c(1, 2))
+
+# Gráfica con Proportion of Variance Explained 
+plot(pve, xlab = "Principal Component",
+ylab = "Proportion of Variance Explained", ylim = c(0, 1),
+type = "b")
+
+# Gráfica con Cumulative Proportion of Variance Explained 
+plot(cumsum(pve), xlab = "Principal Component",
+ylab = "Cumulative Proportion of Variance Explained",
+ylim = c(0, 1), type = "b")
+abline(h = 0.8,col = 2)
+
+```
+Se aprecia también en la segunda gráfica que son los tres primeros componentes principales los que captan más del 80% de la varianza total de los datos.
+
 **Además, aplica PCR para predecir lpsa teniendo en cuenta las variables lcavol, lweight, lbph, lcp, svi. ¿Qué conclusiones podrías sacar?¿Este modelo es mejor que el del apartado 5?**
 ```{r}
 # Creamos variables con los datos
@@ -555,7 +576,7 @@ y.pcr <- datos.num$lpsa # datos de salida
 # Creamos un conjunto de testeo
 y.pcr.test <- y.pcr[test]
 
-# Hacemos una regesión de componentes principales (PCR) con el conjunto de entrenamiento
+# Hacemos una regresión de componentes principales (PCR) con el conjunto de entrenamiento
 pcr.fit <- pcr(lpsa ~ ., data = datos.num, subset = train, scale = TRUE, validation = "CV")
 
 # Hacemos un resumen de la regresión
