@@ -1,3 +1,6 @@
+# Extensiones varias
+*.csv
+
 # Linter files
 .lintr
 
