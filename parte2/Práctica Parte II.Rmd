@@ -1,0 +1,25 @@
+---
+title: "Práctica 2"
+author: "Antonio Galián Gálvez"
+date: "2024-12-03"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+datos <- read.csv('sampled.csv', header = TRUE, sep = ",")
+
+str(datos)
+
+sum(is.na(datos))
+
+prop.table(table(datos$Class))
+
+set.seed(12345)
+
+test = datos[sample(1:nrow(datos),10000),]
+
+train = -(test)
+
