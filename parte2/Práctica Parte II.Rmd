@@ -9,17 +9,87 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-datos <- read.csv('sampled.csv', header = TRUE, sep = ",")
+```{r}
 
-str(datos)
+library(summarytools)
 
-sum(is.na(datos))
+#Leemos el CSV
+mydf <- read.csv('sampled.csv', header = TRUE, sep = ",")
 
-prop.table(table(datos$Class))
+#print(dfSummary(mydf),method="render")  # no sale bien
+
+#Eliminamos la columna X
+mydf = mydf[,-1]
+
+summary(mydf)
+
+str(mydf)
+#Vemos la proporción de clases en la columna a predecir
+prop.table(table(mydf$Class))
+
+
+# Vemos la cantidad de datos nulos presentes en los datos
+sum(is.na(mydf))
+
+
+#Ahora queremos ver en cuántas filas se encuentran los valores nulos
+
+#Primero vemos las coordenadas de los valores nulos
+na.coordinates <- which(is.na(mydf), arr.ind = TRUE)
+
+#Vemos las distintas filas en las que se encuentran
+na.rows <- unique(na.coordinates[, "row"])
+
+# De las tres filas, vemos cuáles son de la clase "Benign" y cuales de "Keylogger"
+mydf[na.rows,]$Class
+
+# Todas son de Keylogger, pero al ser solo 3, podemos eliminar dichas filas.
+
+
+
+#Todos los datos nulos se encuentran en "Keylogger"
+mydf <- na.omit(mydf)
+
+
+# Comprobamos de nuevo la proporción de la aparición de ambos
+prop.table(table(mydf$Class))
+
+# Es prácticamente igual que anteriormente
+
+
+sum(is.na(mydf))
+# Ahora hay 0 valores nulos
+
+#Comprobamos si existen filas duplicadas
+sum(duplicated(mydf))
+
+#Existen 7089
+
+#Las eliminamos
+mydf <- mydf[!duplicated(mydf),]
+
+sum(duplicated(mydf))
+#Ya no hay duplicados
+
+#Pasamos Class a factor
+mydf$Class <- as.factor(mydf$Class)
+
+#Eliminamos la variable timestamp
+mydf <- mydf[,-7]
+
+```
+```{r}
+
+#Realizamos PCA
+
+pr.out <- prcomp(mydf, scale = TRUE)
+```
+
+
 
 set.seed(12345)
 
 test = datos[sample(1:nrow(datos),10000),]
 
-train = -(test)
+train = (-test)
 
