@@ -105,23 +105,36 @@ mydf <- mydf[, -constant_cols]
 ```{r}
 # Realizamos PCA
 
-# Seleccionamos las columnas que son factores
-mydf.factor <- mydf[, sapply(mydf, is.factor)]
+# Seleccionamos las columnas numéricas
+mydf.numeric <- mydf[, sapply(mydf, is.numeric)]
 
-# Convertimos las variables factor a numéricas
-mydf.numeric <- mydf
-for (col in names(mydf.factor)) {
-  mydf.numeric[, col] <- as.numeric(mydf.factor[, col])
-}
-
-# Eliminamos las columnas de tipo carácter
-mydf.numeric <- mydf.numeric[, !sapply(mydf.numeric, is.character)]
+# Estandarizamos los datos
+mydf.numeric <- scale(mydf.numeric)
 
 # Realizamos PCA
 pr.out <- prcomp(mydf.numeric, scale = TRUE)
 
-# Realizamos un gráfico del PCA con un biplot
-biplot(pr.out, choices = 1:2)
+# Vemos la varianza explicada
+summary(pr.out)
+
+# Seleccionamos las componentes principales que expliquen al menos el 90% de la varianza
+cumsum <- cumsum(pr.out$sdev^2)
+cumsum <- cumsum / sum(pr.out$sdev^2)
+ncomp <- which(cumsum > .8)[1]
+ncomp
+
+
+#-------------------------------------------
+# A partir de aquí es solo para experimentar
+#-------------------------------------------
+
+# Hacemos un producto escalar entre las variables para determinar las que están más relacionadas
+var <- 3
+components <- pr.out$rotation
+components.mult <- abs(sweep(components, 2, components[var, ], `*`))
+var.correlationated <- sort(rowSums(components.mult), decreasing = TRUE)[1:10] / max(rowSums(components.mult))
+var.correlationated
+rownames(components)[var]
 ```
 
 
