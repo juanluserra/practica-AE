@@ -9,6 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+
 ```{r}
 # Seleccioamos el directorio actual como directorio de trabajo
 # Si estamos compilando no lo hacemos para que no de error la compilación
@@ -22,7 +23,6 @@ library(summarytools)
 # Seleccionamos la semilla aleatoria para todo el cuaderno
 set.seed(12345)
 ```
-
 
 
 ```{r}
@@ -104,7 +104,24 @@ mydf <- mydf[, -constant_cols]
 
 ```{r}
 # Realizamos PCA
-pr.out <- prcomp(mydf, scale = TRUE)
+
+# Seleccionamos las columnas que son factores
+mydf.factor <- mydf[, sapply(mydf, is.factor)]
+
+# Convertimos las variables factor a numéricas
+mydf.numeric <- mydf
+for (col in names(mydf.factor)) {
+  mydf.numeric[, col] <- as.numeric(mydf.factor[, col])
+}
+
+# Eliminamos las columnas de tipo carácter
+mydf.numeric <- mydf.numeric[, !sapply(mydf.numeric, is.character)]
+
+# Realizamos PCA
+pr.out <- prcomp(mydf.numeric, scale = TRUE)
+
+# Realizamos un gráfico del PCA con un biplot
+biplot(pr.out, choices = 1:2)
 ```
 
 
