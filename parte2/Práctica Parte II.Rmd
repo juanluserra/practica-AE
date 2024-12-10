@@ -1,6 +1,6 @@
 ---
 title: "Práctica 2"
-author: "Antonio Galián Gálvez"
+author: "Antonio Galián Gálvez, Juan Luis Serradilla Tormos"
 date: "2024-12-03"
 output: html_document
 ---
@@ -21,9 +21,8 @@ mydf <- read.csv('sampled.csv', header = TRUE, sep = ",")
 #Eliminamos la columna X
 mydf = mydf[,-1]
 
-summary(mydf)
 
-str(mydf)
+
 #Vemos la proporción de clases en la columna a predecir
 prop.table(table(mydf$Class))
 
@@ -72,12 +71,65 @@ sum(duplicated(mydf))
 #Ya no hay duplicados
 
 #Pasamos Class a factor
-mydf$Class <- as.factor(mydf$Class)
+
 
 #Eliminamos la variable timestamp
 mydf <- mydf[,-7]
 
+
+
+#Comprobamos si hay variables que debemos cambiar de tipo
+mydf$Class <- as.factor(mydf$Class)
+mydf$Protocol <- as.factor(mydf$Protocol)
+mydf$Destination.Port <- as.character(mydf$Destination.Port)
+mydf$Source.Port <- as.character(mydf$Source.Port)
+mydf$CWE.Flag.Count <- as.numeric(mydf$CWE.Flag.Count)
+
+summary(mydf)
+
+#Pasamos los que son de rango 0-1 a factor
+mydf$Fwd.PSH.Flags <- as.factor(mydf$Fwd.PSH.Flags)
+mydf$FIN.Flag.Count <- as.factor(mydf$FIN.Flag.Count)
+mydf$SYN.Flag.Count <- as.factor(mydf$SYN.Flag.Count)
+mydf$PSH.Flag.Count <- as.factor(mydf$PSH.Flag.Count)
+mydf$ACK.Flag.Count <- as.factor(mydf$ACK.Flag.Count)
+mydf$URG.Flag.Count <- as.factor(mydf$URG.Flag.Count)
+mydf$SYN.Flag.Count <- as.factor(mydf$SYN.Flag.Count)
+
+
+
+
+
+num_cols <- which(sapply(mydf, is.numeric))
+
+num_cols
+
+#Obtenemos las dcolumnas con desviaciones estandar nulas
+constant_cols <- which(sapply(mydf[,num_cols], sd) == 0)
+
+constant_cols
+
+abs_constant_cols <- num_cols[constant_cols]
+
+#Las eliminamos
+
+mydf <- mydf[,-abs_constant_cols]
+
+
+#Comprobamos que no existe ninguna columna constante
+
+num_cols <- which(sapply(mydf, is.numeric))
+
+constant_cols <- which(sapply(mydf[,num_cols], sd) == 0)
+
+constant_cols
+
+# No hay ninguna columna constante
 ```
+
+
+
+
 ```{r}
 
 #Realizamos PCA
