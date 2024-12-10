@@ -1,6 +1,6 @@
 ---
 title: "Práctica 2"
-author: "Antonio Galián Gálvez"
+author: "Antonio Galián Gálvez, Juan Luis Serradilla Tormos"
 date: "2024-12-03"
 output: html_document
 ---
@@ -16,29 +16,104 @@ if (interactive()) {
   setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 }
 
+# Cargamos las librerías necesarias
+library(summarytools)
+
 # Seleccionamos la semilla aleatoria para todo el cuaderno
 set.seed(12345)
 ```
 
+
+
 ```{r}
 # Cargamos los datos
-datos <- read.csv("sampled.csv", header = TRUE, sep = ",")
+mydf <- read.csv("sampled.csv", header = TRUE, sep = ",")
 
-# Vemos el tipo de cada variable
-str(datos)
+# Eliminamos la columna X, que es la columna de los índices
+mydf <- mydf[, names(mydf) != "X"]
 
-sum(is.na(datos))
+# Vemos la proporción de clases en la columna a predecir
+proptable.old <- prop.table(table(mydf$Class))
 
-prop.table(table(datos$Class))
+# Vemos la cantidad de datos nulos presentes en los datos
+na.number <- sum(is.na(mydf))
+na.prop <- na.number / nrow(mydf) / ncol(mydf) * 100
+paste("La proporcion de nulos es: ", na.prop, "%", sep = "")
 
-set.seed(12345)
+# Primero vemos las coordenadas de los valores nulos
+na.coordinates <- which(is.na(mydf), arr.ind = TRUE)
 
-test_indices <- sample(1:nrow(datos), 10000)
-test <- datos[test_indices, ]
+# Vemos las distintas filas en las que se encuentran
+na.rows <- unique(na.coordinates[, "row"])
+na.prows <- length(na.rows) / nrow(mydf) * 100
+paste("El porcentaje de filas con nulos es: ", na.prows, "%", sep = "")
 
-train_indices <- setdiff(1:nrow(datos), test_indices)
-train <- datos[train_indices, ]
+# De las tres filas, vemos cuáles son de la clase "Benign" y cuales de "Keylogger"
+mydf[na.rows, ]$Class
+
+# Todas son de Keylogger, pero al ser solo 3, podemos eliminar dichas filas.
+mydf <- na.omit(mydf)
+
+# Comprobamos de nuevo la proporción de la aparición de ambos
+proptable.new <- prop.table(table(mydf$Class))
+proptable.old
+proptable.new
+# Es prácticamente igual que anteriormente
+
+# Comprobamos si existen filas duplicadas
+dup.nrows <- sum(duplicated(mydf))
+dup.prows <- dup.nrows / nrow(mydf) * 100
+paste("El porcentaje de filas duplicadas es: ", dup.prows, "%", sep = "")
+
+# Las eliminamos
+mydf <- mydf[!duplicated(mydf), ]
+
+# Pasamos Class a factor
+mydf$Class <- as.factor(mydf$Class)
+
+# Eliminamos la variable timestamp
+mydf <- mydf[, names(mydf) != "Timestamp"]
+
+# Cambiamos el tipo de las variables que sea necesario
+mydf$Class <- as.factor(mydf$Class)
+mydf$Protocol <- as.factor(mydf$Protocol)
+mydf$Destination.Port <- as.character(mydf$Destination.Port)
+mydf$Source.Port <- as.character(mydf$Source.Port)
+mydf$CWE.Flag.Count <- as.numeric(mydf$CWE.Flag.Count)
+
+# Pasamos los que son de rango 0-1 a factor
+mydf$Fwd.PSH.Flags <- as.factor(mydf$Fwd.PSH.Flags)
+mydf$FIN.Flag.Count <- as.factor(mydf$FIN.Flag.Count)
+mydf$SYN.Flag.Count <- as.factor(mydf$SYN.Flag.Count)
+mydf$PSH.Flag.Count <- as.factor(mydf$PSH.Flag.Count)
+mydf$ACK.Flag.Count <- as.factor(mydf$ACK.Flag.Count)
+mydf$URG.Flag.Count <- as.factor(mydf$URG.Flag.Count)
+mydf$SYN.Flag.Count <- as.factor(mydf$SYN.Flag.Count)
+
+# Seleccionamos las columnas numéricas
+num_cols <- which(sapply(mydf, is.numeric))
+
+# Obtenemos las dcolumnas con desviaciones estandar nulas
+constant_cols <- which(sapply(mydf[, num_cols], sd) == 0)
+constant_cols <- num_cols[constant_cols]
+
+# Eliminamos las columnas con valores constantes
+mydf <- mydf[, -constant_cols]
 ```
 
+
+```{r}
+# Realizamos PCA
+pr.out <- prcomp(mydf, scale = TRUE)
 ```
+
+
+```{r}
+test_indices <- sample(1:nrow(mydf), 10000)
+test <- mydf[test_indices, ]
+
+train_indices <- setdiff(1:nrow(mydf), test_indices)
+train <- mydf[train_indices, ]
+```
+
 
