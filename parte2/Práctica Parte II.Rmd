@@ -9,8 +9,22 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-datos <- read.csv('sampled.csv', header = TRUE, sep = ",")
+```{r}
+# Seleccioamos el directorio actual como directorio de trabajo
+# Si estamos compilando no lo hacemos para que no de error la compilación
+if (interactive()) {
+  setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+}
 
+# Seleccionamos la semilla aleatoria para todo el cuaderno
+set.seed(12345)
+```
+
+```{r}
+# Cargamos los datos
+datos <- read.csv("sampled.csv", header = TRUE, sep = ",")
+
+# Vemos el tipo de cada variable
 str(datos)
 
 sum(is.na(datos))
@@ -19,7 +33,12 @@ prop.table(table(datos$Class))
 
 set.seed(12345)
 
-test = datos[sample(1:nrow(datos),10000),]
+test_indices <- sample(1:nrow(datos), 10000)
+test <- datos[test_indices, ]
 
-train = -(test)
+train_indices <- setdiff(1:nrow(datos), test_indices)
+train <- datos[train_indices, ]
+```
+
+```
 
