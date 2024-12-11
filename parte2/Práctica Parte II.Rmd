@@ -191,7 +191,21 @@ train_indices <- setdiff(1:nrow(mydf), test_indices)
 train <- mydf[train_indices, ]
 ```
 
+
 ```{r}
+
+#4
+
+#Este problema sí podría resolverse con un algoritmo de regresión
+
+#Dado que estamos antes un problema de clasificación binaria, el método de regresión que podemos usar es la regresión logística, especialmente una regresión logística múltiple al tener más de un predictor.
+
+#Vamos a crear un modelo de este tipo de regresión.
+
+lr<-glm(Class~.,data= mydf,family=binomial)
+
+
+
 
 ```
 
