@@ -114,14 +114,59 @@ mydf.numeric <- scale(mydf.numeric)
 # Realizamos PCA
 pr.out <- prcomp(mydf.numeric, scale = TRUE)
 
+pr.out
+#Observando los primeros PC pueden extraerse relaciones entre las variables con valores más altos positiva o negativamente.
+
+# En el PC1 se tiene que las variables más relevantes son:
+#-Bwd.Packet.Length.Max, 0.230922856
+#-Bwd.Packet.Length.Std, 0.217046556
+#-Fwd.Packet.Length.Max, 0.216276331
+#-Bwd.Packet.Length.Mean, 0.207408658
+
+# Lo que indica que esta componente está relacionada con el tamaño de los paquetes tanto backward como forward, y las anteriores variables están relacionadas positivamente
+
+
+#En el PC2 se resaltan las siguientes variables:
+#-Bwd.Packet.Length.Mean, 0.155033239
+#-Bwd.Packet.Length.Max, 0.131454508
+#-Flow.IAT.Mean, -0.229527468
+#-Flow.Duration, -0.241615961
+
+#Esta componente relaciona la longitud de los paquetes backward y parámetros del flujo. Cuanto mayor es la longitud de los paquetes, menor es la media de IAT y la duración del flujo.
+
 # Vemos la varianza explicada
 summary(pr.out)
 
-# Seleccionamos las componentes principales que expliquen al menos el 90% de la varianza
-cumsum <- cumsum(pr.out$sdev^2)
-cumsum <- cumsum / sum(pr.out$sdev^2)
-ncomp <- which(cumsum > .8)[1]
+
+
+#Calculamos las varianzas de cada componente principal
+pc.var=pr.out$sdev^2 
+
+#Ahora podemos calcular el PVE = Proportion of Variance Explained
+pve = pc.var/sum(pc.var)
+
+#Con esto graficamos cómo varían el PVE y el PVE acumulado en función del número de componentes principales
+par(mfrow = c(1, 2))
+ plot(pve, xlab = "Principal Component",
+ ylab = "Proportion of Variance Explained", ylim = c(0, 1),
+ type = "b")
+ plot(cumsum(pve), xlab = "Principal Component",
+ ylab = "Cumulative Proportion of Variance Explained",
+ ylim = c(0, 1), type = "b")
+ 
+# Seleccionamos las componentes principales que expliquen al menos el 80% de la varianza
+ncomp <- which(cumsum(pve) > .8)[1]
 ncomp
+
+#Con estos componentes podemos realizar un biplot, que resultará más legible que con todas las componentes principales elegidas
+
+pr.out$x <- pr.out$x[1:3,]
+
+#Elegimos los componentes a representar
+pr.out$rotation <- pr.out$rotation[1:ncomp, ]
+
+biplot(pr.out, scale=0)
+#Con 11 componentes sigue viéndose borroso
 
 
 #-------------------------------------------
@@ -146,4 +191,7 @@ train_indices <- setdiff(1:nrow(mydf), test_indices)
 train <- mydf[train_indices, ]
 ```
 
+```{r}
+
+```
 
