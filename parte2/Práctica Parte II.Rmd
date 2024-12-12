@@ -114,7 +114,9 @@ mydf.numeric <- scale(mydf.numeric)
 # Realizamos PCA
 pr.out <- prcomp(mydf.numeric, scale = TRUE)
 
-pr.out
+pr.out.modified <- pr.out
+pr.out.modified$x <- pr.out$x[1:1000, ]
+biplot(pr.out.modified, scale = 0)
 # Observando los primeros PC pueden extraerse relaciones entre las variables con valores más altos positiva o negativamente.
 
 # En el PC1 se tiene que las variables más relevantes son:
@@ -137,8 +139,6 @@ pr.out
 # Vemos la varianza explicada
 summary(pr.out)
 
-
-
 # Calculamos las varianzas de cada componente principal
 pc.var <- pr.out$sdev^2
 
@@ -157,21 +157,42 @@ plot(cumsum(pve),
   ylab = "Cumulative Proportion of Variance Explained",
   ylim = c(0, 1), type = "b"
 )
-
+par(mfrow = c(1, 1))
 # Seleccionamos las componentes principales que expliquen al menos el 80% de la varianza
 ncomp <- which(cumsum(pve) > .8)[1]
 ncomp
 
-# Con estos componentes podemos realizar un biplot, que resultará más legible que con todas las componentes principales elegidas
-pr.out$x <- pr.out$x[1:10, ]
-
-# Elegimos los componentes a representar
-pr.out$rotation <- pr.out$rotation[1:ncomp, ]
-
+# Seleccionamos una cantidad de filas del dataset más pequeá para poder visualizar los datos
+pr.out.modified <- pr.out
+pr.out.modified$x <- pr.out$x[1:1000, ]
 par(mfrow = c(1, 1))
-biplot(pr.out, scale = 0)
-# Con 11 componentes sigue viéndose borroso
+biplot(pr.out.modified, scale = 0)
 
+# Comprobamos las variables más importantes en cada PCI
+PCI <- 1
+components <- pr.out$rotation[, PCI]**2
+components <- sort(components, decreasing = TRUE)
+cumsum(components)
+length(components[cumsum(components) <= 0.8])
+
+# Hacemos lo contrario, dada una variable vemos como se relaciona con los PCIs
+components.names <- c()
+threshold <- 0.8
+for (var in 1:ncol(mydf.numeric)) {
+  components <- pr.out$rotation[var, ]**2
+  components <- sort(components, decreasing = TRUE)
+  components.valids <- which(cumsum(components) <= threshold)
+  components.names <- c(components.names, names(components.valids))
+}
+components.names <- unique(components.names)
+length(components.names)
+
+
+var <- 3
+components <- pr.out$rotation[var, ]**2
+components <- sort(components, decreasing = TRUE)
+cumsum(components)
+length(components[cumsum(components) <= 0.8])
 
 #-------------------------------------------
 # A partir de aquí es solo para experimentar
