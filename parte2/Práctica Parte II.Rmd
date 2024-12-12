@@ -72,23 +72,8 @@ mydf <- mydf[!duplicated(mydf), ]
 mydf$Class <- as.factor(mydf$Class)
 
 # Eliminamos la variable timestamp
-mydf <- mydf[, names(mydf) != "Timestamp"]
-
-# Cambiamos el tipo de las variables que sea necesario
-mydf$Class <- as.factor(mydf$Class)
-mydf$Protocol <- as.factor(mydf$Protocol)
-mydf$Destination.Port <- as.character(mydf$Destination.Port)
-mydf$Source.Port <- as.character(mydf$Source.Port)
-mydf$CWE.Flag.Count <- as.numeric(mydf$CWE.Flag.Count)
-
-# Pasamos los que son de rango 0-1 a factor
-mydf$Fwd.PSH.Flags <- as.factor(mydf$Fwd.PSH.Flags)
-mydf$FIN.Flag.Count <- as.factor(mydf$FIN.Flag.Count)
-mydf$SYN.Flag.Count <- as.factor(mydf$SYN.Flag.Count)
-mydf$PSH.Flag.Count <- as.factor(mydf$PSH.Flag.Count)
-mydf$ACK.Flag.Count <- as.factor(mydf$ACK.Flag.Count)
-mydf$URG.Flag.Count <- as.factor(mydf$URG.Flag.Count)
-mydf$SYN.Flag.Count <- as.factor(mydf$SYN.Flag.Count)
+vars.to.remove <- c("Timestamp", "Flow.ID", "Source.IP", "Destination.IP", "Source.Port", "Destination.Port", "CWE.Flag.Count")
+mydf <- mydf[, !names(mydf) %in% vars.to.remove]
 
 # Seleccionamos las columnas numéricas
 num_cols <- which(sapply(mydf, is.numeric))
@@ -99,6 +84,19 @@ constant_cols <- num_cols[constant_cols]
 
 # Eliminamos las columnas con valores constantes
 mydf <- mydf[, -constant_cols]
+
+# Cambiamos el tipo de las variables que sea necesario
+mydf$Class <- as.factor(mydf$Class)
+mydf$Protocol <- as.factor(mydf$Protocol)
+
+# Pasamos los que son de rango 0-1 a factor
+mydf$Fwd.PSH.Flags <- as.factor(mydf$Fwd.PSH.Flags)
+mydf$FIN.Flag.Count <- as.factor(mydf$FIN.Flag.Count)
+mydf$SYN.Flag.Count <- as.factor(mydf$SYN.Flag.Count)
+mydf$PSH.Flag.Count <- as.factor(mydf$PSH.Flag.Count)
+mydf$ACK.Flag.Count <- as.factor(mydf$ACK.Flag.Count)
+mydf$URG.Flag.Count <- as.factor(mydf$URG.Flag.Count)
+mydf$SYN.Flag.Count <- as.factor(mydf$SYN.Flag.Count)
 ```
 
 
@@ -199,10 +197,10 @@ length(components[cumsum(components) <= 0.8])
 #-------------------------------------------
 
 # Hacemos un producto escalar entre las variables para determinar las que están más relacionadas
-var <- 3
+var <- 65
 components <- pr.out$rotation
 components.mult <- abs(sweep(components, 2, components[var, ], `*`))
-var.correlationated <- sort(rowSums(components.mult), decreasing = TRUE)[1:10] / max(rowSums(components.mult))
+var.correlationated <- sort(rowSums(components.mult), decreasing = TRUE) / max(rowSums(components.mult))
 var.correlationated
 rownames(components)[var]
 ```
@@ -226,6 +224,15 @@ train <- mydf[train_indices, ]
 
 # Vamos a crear un modelo de este tipo de regresión.
 
-lr <- glm(Class ~ ., data = mydf, family = binomial)
+# Creamos un dataset con variables numéricas y factores
+logr <- glm(Class ~ ., data = mydf, family = binomial)
+summary(logr)
+
+logr.probs <- predict(logr, type = "response")
+logr.pred <- ifelse(logr.probs > 0.5, "Benigno", "Maligno")
+logr.table <- table(logr.pred, mydf$Class)
+addmargins(round(prop.table(logr.table) * 100, 2))
+addmargins(round(prop.table(logr.table, 2) * 100, 1), 1)
+addmargins(round(prop.table(logr.table, 1) * 100, 1), 2)
 ```
 
