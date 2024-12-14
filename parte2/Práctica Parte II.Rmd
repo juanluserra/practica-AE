@@ -1,5 +1,5 @@
 ---
-title: "Práctica 2"
+title: "Práctica Parte II. Aprendizaje Estadístico"
 author: "Antonio Galián Gálvez, Juan Luis Serradilla Tormos"
 date: "2024-12-03"
 output: html_document
@@ -24,71 +24,141 @@ library(summarytools)
 set.seed(12345)
 ```
 
-
+Una vez se han importado las librerías, lo primero que debemos realizar es la lectura de los datos. En este caso partimos del ejemplo reducido 'sampled.csv'.
 ```{r}
 # Cargamos los datos
 mydf <- read.csv("sampled.csv", header = TRUE, sep = ",")
 
+```
+
+Dado que al leerse el fichero .csv es generada una columna de nombre "X" a modo de índice, la borramos porque resulta redundante.´
+
+```{r}
 # Eliminamos la columna X, que es la columna de los índices
 mydf <- mydf[, names(mydf) != "X"]
+```
 
-# Vemos la proporción de clases en la columna a predecir
-proptable.old <- prop.table(table(mydf$Class))
 
+
+El dataset es muy grande, tanto en el número de medidas como en el de predictores. Lo más conveniente es realizar un preprocesamiento de los datos para quedarnos solamente con la información relevante. Este filtrado constará de varios pasos, ya que existen distintos aspectos que pueden depurarse. Los dos primeros serán relativos a las filas, y los dos siguientes a las columnas. Empezamos por el tratamiento de las filas.
+
+El primero paso respecto el depuramiento de las filas será eliminar aquellas donde existan valores nulos, es decir, de tipo NA. Para esto debemos averiguar primero cúantos existen en el dataset y la proporción que suponen respecto al conjunto total de datos.
+```{r}
 # Vemos la cantidad de datos nulos presentes en los datos
 na.number <- sum(is.na(mydf))
 na.prop <- na.number / nrow(mydf) / ncol(mydf) * 100
 paste("La proporcion de nulos es: ", na.prop, "%", sep = "")
+```
+El número total de valores nulos son 117, y son un 0.0026% de la cantidad total de datos, lo que resulta muy favorable al ser tan pequeño. Ahora bien, dado que la manera de proceder será eliminar sus filas debemos averiguar en cuáles de ellas se encuentran. Además, es importante saber a qué valor de la columna Class corresponden estas filas, para no desbalancear la proporción de las categorías de Class presente en el dataset. Vemos en primer lugar cuál es esta proporción originalmente, incluyendo todos los datos.
 
+```{r}
+# Vemos la proporción de clases en la columna a predecir
+proptable.old <- round(prop.table(table(mydf$Class))*100,2)
+proptable.old
+```
+Un 59.14% de filas son de tipo 'Benign' y un 40.86% son de tipo "Keylogger". La proporción es desigual pero no está excesivamente desbalanceada.
+
+Vemos ahora las filas distntas en las que se encuentran los valores nulos.
+
+```{r}
 # Primero vemos las coordenadas de los valores nulos
 na.coordinates <- which(is.na(mydf), arr.ind = TRUE)
 
 # Vemos las distintas filas en las que se encuentran
 na.rows <- unique(na.coordinates[, "row"])
+na.rows
+
+# Calculamos la proporción respecto al número total de filas
 na.prows <- length(na.rows) / nrow(mydf) * 100
 paste("El porcentaje de filas con nulos es: ", na.prows, "%", sep = "")
+
+```
+Resulta que todos los NA están concentrados en 3 filas, las cuales suponen un 0.0057% respecto al número total de filas, lo que implica que no se perderá apenas información. Comprobamos ahora la clase de estas 3 filas.
+
+```{r}
 
 # De las tres filas, vemos cuáles son de la clase "Benign" y cuales de "Keylogger"
 mydf[na.rows, ]$Class
 
+```
+Las 3 filas son de la misma clase, "Keylogger", pero igualmente pueden eliminarse ya que no afectarán mucho a la proporción entre clases. Eliminamos las filas y comprobamos que es así.
+
+```{r}
 # Todas son de Keylogger, pero al ser solo 3, podemos eliminar dichas filas.
 mydf <- na.omit(mydf)
 
 # Comprobamos de nuevo la proporción de la aparición de ambos
-proptable.new <- prop.table(table(mydf$Class))
+proptable.new <- round(prop.table(table(mydf$Class))*100,2)
 proptable.old
 proptable.new
-# Es prácticamente igual que anteriormente
+```
+La diferencias que existen en las proporciones son de un 0.01% mayor en la clase "Benign" y un 0.01% menor en la clase "Keylogger", por lo que es completamente justificable la acción que hemos tomado.
 
+La segunda acción que tomamos respecto a las filas es averiguar cuáles se encuentran repetidas, y acto seguido, eliminarlas. De esta manera podemos liberarnos de información redundante.
+
+```{r}
 # Comprobamos si existen filas duplicadas
 dup.nrows <- sum(duplicated(mydf))
-dup.prows <- dup.nrows / nrow(mydf) * 100
+dup.prows <- round(dup.nrows / nrow(mydf) * 100,2)
+dup.nrows
 paste("El porcentaje de filas duplicadas es: ", dup.prows, "%", sep = "")
+```
+Tenemos 7089 filas duplicadas, un 13.49% del total. Las eliminamos.
 
-# Las eliminamos
+```{r}
+# Eliminamos las filas duplicadas
 mydf <- mydf[!duplicated(mydf), ]
+```
 
-# Pasamos Class a factor
-mydf$Class <- as.factor(mydf$Class)
+Pasamos ahora al preprocesamiento de las columnas. El primer paso es echar un vistazo general a sus características.
 
-# Eliminamos la variable timestamp
-vars.to.remove <- c("Timestamp", "Flow.ID", "Source.IP", "Destination.IP", "Source.Port", "Destination.Port", "CWE.Flag.Count")
+```{r}
+print(dfSummary(mydf),method="render")
+```
+
+Existen variables que por su naturaleza en este contexto sabemos que no serán útiles para nuestra predicción, así que es conveniente prescindir de ellas.
+
+-Flow.ID. Es un identificador del flujo, por lo que no es una característica como tal.
+
+-Timestamp. Al tratarse de un instante temporal, no es cualidad intínseca del flujo.
+
+-Source.IP. Esto es un identificador del dispositivo fuente, lo cual no caracteriza el flujo en sí.
+
+-Destination.IP. Análogamente a la variable anterior, es un identificador del dispositivo de destino, y no es una característica del flujo.
+
+-Source.Port. Esta variable identifica el puerto de la fuente, lo que no determina cómo es el flujo en sí.
+
+-Destination.Port. De forma análoga a la variable anterior, esto identifica el puerto del destino, por lo que no caracteriza el flujo.
+
+(Falta refinar todo lo anterior para justificar cómo realmente no influyen en las cualidades del flujo)
+
+Las eliminamos por tanto.
+
+```{r}
+
+# Eliminamos las variables que no tengan relevancia en nuestro contexto
+vars.to.remove <- c("Flow.ID", "Timestamp", "Source.IP", "Destination.IP", "Source.Port", "Destination.Port")
 mydf <- mydf[, !names(mydf) %in% vars.to.remove]
 
-# Seleccionamos las columnas numéricas
-num_cols <- which(sapply(mydf, is.numeric))
+```
 
-# Obtenemos las dcolumnas con desviaciones estandar nulas
-constant_cols <- which(sapply(mydf[, num_cols], sd) == 0)
-constant_cols <- num_cols[constant_cols]
+Una vez hemos eliminado estas variables pasamos a comprobar si todas las restantes están en el formato adecuado ('numeric','factor', etc.). Este paso es necesario para el filtrado de variables constantes que realizaremos más adelante.
 
-# Eliminamos las columnas con valores constantes
-mydf <- mydf[, -constant_cols]
+```{r}
+str(mydf)
+```
 
-# Cambiamos el tipo de las variables que sea necesario
+
+La primera variable que debemos pasar a un formato adecuado es la de salida, "Class", ya que originalmente aparece como "character". Será necesario convertirla a "factor" dado que se trata de categorías.
+
+```{r}
+# Pasamos Class a factor
 mydf$Class <- as.factor(mydf$Class)
-mydf$Protocol <- as.factor(mydf$Protocol)
+```
 
+Algunas variables de entrada numéricas presentan un rango de entre 0 y 1, lo que induce a pensar que realmente se tratan de variables binarias, por lo que deben ser convertidas a factor.
+
+```{r}
 # Pasamos los que son de rango 0-1 a factor
 mydf$Fwd.PSH.Flags <- as.factor(mydf$Fwd.PSH.Flags)
 mydf$FIN.Flag.Count <- as.factor(mydf$FIN.Flag.Count)
@@ -98,6 +168,69 @@ mydf$ACK.Flag.Count <- as.factor(mydf$ACK.Flag.Count)
 mydf$URG.Flag.Count <- as.factor(mydf$URG.Flag.Count)
 mydf$SYN.Flag.Count <- as.factor(mydf$SYN.Flag.Count)
 ```
+
+De las variables numéricas restantes existe una que, dada su naturaleza, encaja más como factor que como número. Se trata de "Protocol", y, como su nombre indica, hace referencia al protocolo usado en el flujo. Al existir distintos tipos de protocolos, puede entenderse esta variable como una variable categórica. La pasamos por tanto a factor.
+
+```{r}
+
+# Cambiamos "Protocol" a factor
+mydf$Protocol <- as.factor(mydf$Protocol)
+
+```
+
+Existe una variable definida como "character" llamada "CWE.Flag.Count", cuyos posibles valores son "0" y "0.0". Dado que forma parte del grupo de variables categóricas que contienen "Flag.Count", es bastante probable que "CWE.Flag.Count" también sea de este tipo y que haya existido un error en la codificación de los valores binarios 0 y 1. Lo solucionaremos conviertiendo "0.0" a 1, de manera que pueda seguir el formato común.
+
+```{r}
+
+#Convertimos los "0.0" a 1
+mydf$CWE.Flag.Count <- ifelse(mydf$CWE.Flag.Count == "0.0", "1",mydf$CWE.Flag.Count)
+
+#Pasamos la variable a factor
+mydf$CWE.Flag.Count <- as.factor(mydf$CWE.Flag.Count)
+
+```
+
+Ahora que todas las variables de tipo "numeric" son realmente variables numéricas, lo último que hay que hacer es eliminar las que tienen desviación estándar nula.
+
+
+```{r}
+
+# Seleccionamos las columnas numéricas
+num_cols <- which(sapply(mydf, is.numeric))
+
+# Obtenemos las dcolumnas con desviaciones estandar nulas
+constant_cols <- which(sapply(mydf[, num_cols], sd) == 0)
+constant_cols <- num_cols[constant_cols]
+
+```
+
+
+Existen un total de 11 columnas númericas constantes. Las eliminamos.
+
+```{r}
+
+# Eliminamos las columnas con valores constantes
+mydf <- mydf[, -constant_cols]
+
+```
+
+
+Con esto ya hemos terminado el preprocesamiento. Podemos observar de qué tamaño es nuestro dataset preprocesado y listo para el análisis.
+
+```{r}
+
+dim(mydf)
+```
+
+
+
+
+# Apartado PCA
+
+
+
+
+
 
 
 ```{r}
@@ -197,19 +330,19 @@ length(components[cumsum(components) <= 0.8])
 #-------------------------------------------
 
 # Hacemos un producto escalar entre las variables para determinar las que están más relacionadas
-```
+#```
 
 
-```{r}
+#```{r}
 test_indices <- sample(1:nrow(mydf), 10000)
 test <- mydf[test_indices, ]
 
 train_indices <- setdiff(1:nrow(mydf), test_indices)
 train <- mydf[train_indices, ]
-```
+#```
 
 
-```{r}
+#```{r}
 # 4
 
 # Este problema sí podría resolverse con un algoritmo de regresión
@@ -227,7 +360,7 @@ lr <- glm(Class ~ ., data = mydf.lr,family=binomial)
 
 summary(lr)
 
-lr.probs<-predict(lrT,type="response")
+lr.probs<-predict(lr,type="response")
 
 
 # Creamos un dataset con variables numéricas y factores
