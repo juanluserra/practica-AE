@@ -225,7 +225,16 @@ train <- mydf[train_indices, ]
 # Dado que estamos antes un problema de clasificación binaria, el método de regresión que podemos usar es la regresión logística, especialmente una regresión logística múltiple al tener más de un predictor.
 
 # Vamos a crear un modelo de este tipo de regresión.
+mydf.lr <- mydf[,sapply(mydf,is.numeric)]
 
-lr <- glm(Class ~ ., data = mydf, family = binomial)
+mydf.lr$Class <- mydf$Class
+
+str(mydf)
+
+lr <- glm(Class ~ ., data = mydf.lr,family=binomial)
+
+summary(lr)
+
+lrT.probs<-predict(lrT,type="response")
 ```
 
