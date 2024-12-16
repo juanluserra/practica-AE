@@ -415,6 +415,13 @@ for (i in v) {
 
 ```{r}
 mean_accuracy
+# Guardamos mean_accuracy en un archivo .csv
+results <- data.frame()
+results$mean_accuracy <- mean_accuracy
+results$mtry <- v[, 1]
+results$ntree <- v[, 2]
+
+write.csv(results, "results_bagging.csv", row.names = FALSE)
 ```
 
 
