@@ -154,6 +154,10 @@ Ahora que tenemos el dataset preprocesado vamos a guardar el dataset en un fiche
 # Guardamos el dataset preprocesado
 write.csv(mydf, "preprocessed.csv", row.names = FALSE)
 
+# Eliminamos las variables que no aportan información relevante
+vars.to.remove <- c("X", "Flow.ID", "Timestamp", "Source.IP", "Destination.IP", "Source.Port", "Destination.Port")
+mydf <- mydf[, !names(mydf) %in% vars.to.remove]
+
 # Seleccionamos un 10% de las filas
 sampled <- mydf[sample(nrow(mydf), nrow(mydf) * 0.1), ]
 
@@ -174,16 +178,35 @@ Vemos que la proporción de casos positivos y negativos en el dataset sampleado 
 
 # 3. Elabora un análisis no supervisado (PCA) de las conexiones y explica lo que ves. ¿Cómo dirías que va a ser el problema de la elaboración de un modelo de clasificación que identifique conexiones de keystrokes en términos de dificultad? Razona la respuesta.
 
-Vamos a realizar el PCA con el conjunto preprocesado. Primero, cargamos los datos y seleccionamos las columnas numéricas.
+## 3.1. Lectura y preprocesado de los datos
+Cuando cargamos el dataset preprocesado, hay que volver a transformar las variables numéricas a categóricas cuando corresponda.
 ```{r}
-# Cargamos los datos
+# Leemos el dataset preprocesado
 mydf <- read.csv("sampled_preprocesed.csv", header = TRUE, sep = ",")
 
+# Pasamos las variables correspondientes a factor
+mydf$Protocol <- as.factor(mydf$Protocol)
+mydf$Fwd.PSH.Flags <- as.factor(mydf$Fwd.PSH.Flags)
+mydf$FIN.Flag.Count <- as.factor(mydf$FIN.Flag.Count)
+mydf$SYN.Flag.Count <- as.factor(mydf$SYN.Flag.Count)
+mydf$PSH.Flag.Count <- as.factor(mydf$PSH.Flag.Count)
+mydf$ACK.Flag.Count <- as.factor(mydf$ACK.Flag.Count)
+mydf$URG.Flag.Count <- as.factor(mydf$URG.Flag.Count)
+mydf$CWE.Flag.Count <- as.factor(mydf$CWE.Flag.Count)
+mydf$Class <- as.factor(mydf$Class)
+
+# Nos aseguramos de que la clase positiva sea "Keylogger" asignando como clase de referencia a "Benign"
+mydf$Class <- relevel(mydf$Class, ref = "Benign")
+```
+
+## 3.2. Análisis PCA
+Vamos a realizar el PCA con el conjunto preprocesado. Primero, seleccionamos las colunas numéricas.
+```{r}
 # Seleccionamos las columnas numéricas
 mydf.numeric <- mydf[, sapply(mydf, is.numeric)]
 ```
 
-Una vez que tenemos los datos, realizamos el PCA. No hace falta estandarizar las variales previamente ya que el PCA lo hace por nosotros con el parámetro `r scale = TRUE`.
+Una vez tenemos las columnas numéricas seleccionadas, realizamos el PCA. No hace falta estandarizar las variales previamente ya que el PCA lo hace por nosotros con el parámetro `r scale = TRUE`.
 ```{r}
 # Realizamos PCA
 pr.out <- prcomp(mydf.numeric, scale = TRUE)
@@ -205,9 +228,10 @@ plot(
 
 # Seleccionamos las componentes principales que expliquen al menos el 80% de la varianza
 ncomp <- which(pr.out.cumvar > 0.8)[1]
+ncomp
 ```
 
-Vemos que necesitamos las 12 primeras componentes principales para explicar el 80% de la varianza. Solo con las 2 primeras componentes principales explicamos tan solo el 34% de la varianza, una cifra muy baja. Por tanto, necesitamos muchas componentes principales para explicar la varianza de los datos.
+Vemos que necesitamos las 10 primeras componentes principales para explicar el 80% de la varianza. Solo con las 2 primeras componentes principales explicamos tan solo el 37.5% de la varianza, una cifra muy baja. Por tanto, necesitamos muchas componentes principales para explicar la varianza de los datos.
 
 Vamos a realizar un biplot para ver cómo se relacionan las variables con las dos primeras componentes principales.
 ```{r}
@@ -217,150 +241,78 @@ biplot(pr.out, scale = 0, xlim = c(-15, 15), ylim = c(-15, 15))
 dev.off()
 ```
 
-Como el dataset tiene demasiadas varaibles, el biplot se guarda en un .png para poder consultarse cuando se desee. Se puede ver en esta imagen que tenemos demasiados predictores y demasiados valores, no se puede sacar nada en claro. Además, como PC1 y PC2 explican solo el 34% de la varianza el biplot tampoco sería representativo.
+Como el dataset tiene demasiadas varaibles, el biplot se guarda en un .png para poder consultarse cuando se desee. Se puede ver en esta imagen que tenemos demasiados predictores y demasiados valores, no se puede sacar nada en claro. Además, como PC1 y PC2 explican solo el 37.5% de la varianza el biplot tampoco sería representativo.
 
-Por todo esto, podemos ver que la elaboración de un modelo de clasificación que identifique conexiones de keystrokes va a ser un problema complicado. Tenemos muchos predictores y ver las relaciones entre ellos no va a ser una tarea sencilla. Si intentásemos reducir la dimensionalidad del problea con PCA como mucho podríamos reducir a 12 dimensiones, lo cual sigue siendo una gan cantidad de variables.
-
-```{r}
-# Seleccionamos las columnas numéricas
-mydf.numeric <- mydf[, sapply(mydf, is.numeric)]
-
-# Estandarizamos los datos
-mydf.numeric <- scale(mydf.numeric)
-
-# Realizamos PCA
-pr.out <- prcomp(mydf.numeric, scale = TRUE)
-
-pr.out.modified <- pr.out
-pr.out.modified$x <- pr.out$x[1:1000, ]
-biplot(pr.out.modified, scale = 0)
-# Observando los primeros PC pueden extraerse relaciones entre las variables con valores más altos positiva o negativamente.
-
-# En el PC1 se tiene que las variables más relevantes son:
-#-Bwd.Packet.Length.Max, 0.230922856
-#-Bwd.Packet.Length.Std, 0.217046556
-#-Fwd.Packet.Length.Max, 0.216276331
-#-Bwd.Packet.Length.Mean, 0.207408658
-
-# Lo que indica que esta componente está relacionada con el tamaño de los paquetes tanto backward como forward, y las anteriores variables están relacionadas positivamente
+Por todo esto, podemos ver que la elaboración de un modelo de clasificación que identifique conexiones de keystrokes va a ser un problema complicado. Tenemos muchos predictores y ver las relaciones entre ellos no va a ser una tarea sencilla. Si intentásemos reducir la dimensionalidad del problea con PCA como mucho podríamos reducir a 10 dimensiones, lo cual sigue siendo una gan cantidad de variables.
 
 
-# En el PC2 se resaltan las siguientes variables:
-#-Bwd.Packet.Length.Mean, 0.155033239
-#-Bwd.Packet.Length.Max, 0.131454508
-#-Flow.IAT.Mean, -0.229527468
-#-Flow.Duration, -0.241615961
+# 4. ¿Es posible identificar si la conexión es benigna o maligna mediante un modelo de regresión? ¿Qué tipo de modelo de regresión habría que usar en este caso? ¿Cuáles son las características relevantes? ¿Cómo se comporta el modelo?
 
-# Esta componente relaciona la longitud de los paquetes backward y parámetros del flujo. Cuanto mayor es la longitud de los paquetes, menor es la media de IAT y la duración del flujo.
-
-# Vemos la varianza explicada
-summary(pr.out)
-
-# Calculamos las varianzas de cada componente principal
-pc.var <- pr.out$sdev^2
-
-# Ahora podemos calcular el PVE = Proportion of Variance Explained
-pve <- pc.var / sum(pc.var)
-
-# Con esto graficamos cómo varían el PVE y el PVE acumulado en función del número de componentes principales
-par(mfrow = c(1, 2))
-plot(pve,
-  xlab = "Principal Component",
-  ylab = "Proportion of Variance Explained", ylim = c(0, 1),
-  type = "b"
-)
-plot(cumsum(pve),
-  xlab = "Principal Component",
-  ylab = "Cumulative Proportion of Variance Explained",
-  ylim = c(0, 1), type = "b"
-)
-par(mfrow = c(1, 1))
-# Seleccionamos las componentes principales que expliquen al menos el 80% de la varianza
-ncomp <- which(cumsum(pve) > .8)[1]
-ncomp
-
-# Seleccionamos una cantidad de filas del dataset más pequeá para poder visualizar los datos
-pr.out.modified <- pr.out
-pr.out.modified$x <- pr.out$x[1:1000, ]
-par(mfrow = c(1, 1))
-biplot(pr.out.modified, scale = 0)
-
-# Comprobamos las variables más importantes en cada PCI
-PCI <- 1
-components <- pr.out$rotation[, PCI]**2
-components <- sort(components, decreasing = TRUE)
-cumsum(components)
-length(components[cumsum(components) <= 0.8])
-
-# Hacemos lo contrario, dada una variable vemos como se relaciona con los PCIs
-components.names <- c()
-threshold <- 0.8
-for (var in 1:ncol(mydf.numeric)) {
-  components <- pr.out$rotation[var, ]**2
-  components <- sort(components, decreasing = TRUE)
-  components.valids <- which(cumsum(components) <= threshold)
-  components.names <- c(components.names, names(components.valids))
-}
-components.names <- unique(components.names)
-length(components.names)
-
-
-var <- 3
-components <- pr.out$rotation[var, ]**2
-components <- sort(components, decreasing = TRUE)
-cumsum(components)
-length(components[cumsum(components) <= 0.8])
-
-#-------------------------------------------
-# A partir de aquí es solo para experimentar
-#-------------------------------------------
-
-# Hacemos un producto escalar entre las variables para determinar las que están más relacionadas
-```
-
-
-
-
-
+Para poder identificar si la conexión es benigna o maligna mediante un modelo de regresión, usaremos un modelo de regresión logística. Realizaremos unas predicciones con el resultado del modelo y veremos cómo funciona para el dataset. No usaremos conjunto de prueba ni de test, ya que simplemente queremos ver cómo de eficaz es con nuestro conjunto de datos.
 
 ```{r}
-# 4
-
-# Este problema sí podría resolverse con un algoritmo de regresión
-
-# Dado que estamos antes un problema de clasificación binaria, el método de regresión que podemos usar es la regresión logística, especialmente una regresión logística múltiple al tener más de un predictor.
-
-# Vamos a crear un modelo de este tipo de regresión.
-mydf.lr <- mydf[, sapply(mydf, is.numeric)]
-
-mydf.lr$Class <- mydf$Class
-
-str(mydf)
-
-lr <- glm(Class ~ ., data = mydf.lr, family = binomial)
-
-summary(lr)
-
-lr.probs <- predict(lr, type = "response")
-
-
-# Creamos un dataset con variables numéricas y factores
+# Creamos el modelo de regresión logística
 logr <- glm(Class ~ ., data = mydf, family = binomial)
+
+# Vemos un resumen de logr
 summary(logr)
 
+# Vemos los coeficientes que han generado aliasing en el modelo
+alias.info <- alias(logr)
+alias.matrix <- as.matrix(alias.info$Complete)
+alias.matrix <- abs(alias.matrix[, apply(alias.matrix, 2, sd) != 0])
+alias.matrix <- round(alias.matrix)
+alias.matrix
+```
+
+Vemos que hay variables que han generado aliasing en el modelo, lo que significa que están perfectamente correlacionadas con otras variables (variables de filas con variables de columnas). El modelo de regesión logística directamente no tendrá en cuenta estas variables. 
+
+Una vez tenemos el modelo creado, realizamos unas preddicciones. Con estas predicciones se harán unas tablas de confusión para ver cómo se comporta el modelo.
+```{r}
+# Realizamos las predicciones
 logr.probs <- predict(logr, type = "response")
-logr.pred <- ifelse(logr.probs > 0.5, "Benigno", "Maligno")
+logr.pred <- ifelse(logr.probs > 0.5, "Benign", "Keylogger")
 logr.table <- table(logr.pred, mydf$Class)
+dimnames(logr.table) <- list(
+  Predict = c("Benign", "Keylogger"),
+  Real = c("Benign", "Keylogger")
+)
+
+# Realizamos las tablas de confusión
 addmargins(round(prop.table(logr.table) * 100, 2))
+
+# Hacemos una suma por columnas para ver la precisión
 addmargins(round(prop.table(logr.table, 2) * 100, 1), 1)
+
+# Hacemos una suma por filas para ver la sensibilidad
 addmargins(round(prop.table(logr.table, 1) * 100, 1), 2)
 ```
 
+Analizando la tabla de confusión vemos que el modelo no es capaz de predecir correctamente si una conexión es benigna o maligna.
+- De las conexiones que son benignas, el modelo solo es capaz de predecir correctamente el 2.9%. 
+- De las conexiones que son keylogger, el modelo predice correctamente el 78.7%.
+- De las conexiones que se han predicho como benignas, solo el 16.2% eran realmente benignas, dejando una tasa de falso positivo del 83.8%.
+- De las conexiones que se han predicho como keylogger, solo el 36.4% eral realmente keylogger, dejando una tasa de falso negativo del 63.6%.
+  
+Con este análisis podemos concluir que el modelo es nefasto prediciendo conexiones benignas. Además, aunque prediga la mayoría de las conexiones keylogger, tiene una gran tasa de falso positivo, por lo que no es un modelo fiable. Por tanto, no es posible identificar si la conexión es benigna o maligna mediante un modelo de regresión logística.
 
-# Predicción con modelos de machine learning
 
-En primer lugar dividimos los datos en un conjunto de train y otro de test. Para el conjunto de test se cogerán 10000 datos, el resto será de train.
+# 5. Predicción con modelos de machine learning
 
+**- Explicar brevemente el tipo de modelo que genera el algoritmo, y cuál es la estrategia de dicho algoritmos para construir el modelo.**
+
+**- Indicar si el algoritmo en cuestión tiene algún requisito en cuanto a si se han de preprocesar los datos (e.g. escalado, imputación de valores nulos, etc.) y cómo.**
+
+**- Identificar y explicar cada uno de sus hiperparámetros**
+
+**- Detallar una estrategia para la generación del grid de valores para hiperparámetros a usar.**
+
+**- Ejecutar la estrategia, generar los modelos y seleccionar el mejor siguiendo la estrategia explicada arriba**
+
+**- En primer lugar dividimos los datos en un conjunto de train y otro de test. Para el conjunto de test se cogerán 10000 datos, el resto será de train.**
+
+
+## 5.1. Bagging
 ```{r}
 # Definimos el conjunto de test
 test_indices <- sample(1:nrow(mydf), 10000)
@@ -458,8 +410,8 @@ mean_accuracy
 ```
 
 
-#Vayamos ahora con el segundo algortimo. Ahora los hiperparámetros son el número de nodos de la capa oculta y el porcentaje de dropout para la regularización.
-
+## 5.2. Red neuronal
+Vayamos ahora con el segundo algortimo. Ahora los hiperparámetros son el número de nodos de la capa oculta y el porcentaje de dropout para la regularización.
 
 ```{r}
 v1 <- c(50, 0.2)
