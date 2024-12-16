@@ -26,6 +26,8 @@ if (interactive()) {
 
 # Cargamos las librerías necesarias
 library(summarytools)
+library(randomForest)
+library(keras)
 library(magrittr)
 
 # Seleccionamos la semilla aleatoria para todo el cuaderno
@@ -272,16 +274,11 @@ length(components[cumsum(components) <= 0.8])
 #-------------------------------------------
 
 # Hacemos un producto escalar entre las variables para determinar las que están más relacionadas
-#```
+```
 
 
-#```{r}
-test_indices <- sample(1:nrow(mydf), 10000)
-test <- mydf[test_indices, ]
 
-train_indices <- setdiff(1:nrow(mydf), test_indices)
-train <- mydf[train_indices, ]
-#```
+
 
 
 #```{r}
@@ -315,5 +312,154 @@ logr.table <- table(logr.pred, mydf$Class)
 addmargins(round(prop.table(logr.table) * 100, 2))
 addmargins(round(prop.table(logr.table, 2) * 100, 1), 1)
 addmargins(round(prop.table(logr.table, 1) * 100, 1), 2)
+#```
+
+
+# Predicción con modelos de machine learning
+
+En primer lugar dividimos los datos en un conjunto de train y otro de test. Para el conjunto de test se cogerán 10000 datos, el resto será de train.
+
+```{r}
+
+#Definimos el conjunto de test
+test_indices <- sample(1:nrow(mydf), 10000)
+test <- mydf[test_indices, ]
+
+#Definimos el conjunto de train
+train_indices <- setdiff(1:nrow(mydf), test_indices)
+train <- mydf[train_indices, ]
+```
+
+Para llevar a cabo el proceso de validación cruzada, dividiremos el conjunto de train en n pliegues. El número elegido será n=5 pliegues.
+
+```{r}
+
+#Definimos el número de pliegues
+n <- 5
+
+# Generamos un vector de igual longitud que el numero de filas de train, asociando cada valor a un pliegue
+folds_indexes <- sample(rep(1:n, length.out = nrow(train)))
+
+# Obtenemos los pliegues aplicando la secuencia anterior a los datos de train
+folds <- split(train, folds_indexes)
+
+```
+
+Ahora que ya tenemos los pliegues creados, podemos empezar a usar los algoritmos de machine learning para predecir la variable Class. Los algortimos escogidos serán dos: Bagging y Red neuronal.
+
+# Bagging
+
+En este caso los hiperparámetros entre los cuales podemos elegir son dos: el número de variables consideradas en cada split de cada árbol (mtry) y el número de árboles que se crearán (ntree). Crearemos distintos vectores que contendrán dos componentes, siendo cada una un valor posible para su hiperparámetro correspondiente.
+
+Para determinar el rango de valores que podemos probar para mtry, podemos partir del valor usado por defecto en el algoritmo Random Forest para este hiperparámetro, sqrt(p), donde p es el número de predictores.
+
+```{r}
+
+#Vemos cuál es el valor que usa el algoritmo Random Forest por defecto, sqrt(p)
+m_rf <- sqrt(dim(train)[2])
+```
+
+Podemos tomar como referencia mtry=8.
+
+Lo que haremos será crear seis vectores
+```{r}
+length(folds)
+```
+
+```{r}
+v1 <- c(6,100)
+
+v2 <- c(8,150)
+
+v3 <- c(10,200)
+
+
+v <- rbind(v1,v2,v3)
+
+
+
+test_fold <- rep(0,length(folds))
+
+mean_accuracy <- rep(0,dim(v)[1])
+
+
+
+
+for (i in 1:dim(v)[1]) {
+  for (k in seq(1:length(folds))) {
+          
+          #Juntamos todos los folds menos el k
+          data <- do.call(rbind, folds[-k])
+    
+          #Creamos el modelo de bagging
+          bag <- randomForest(Class ~ ., data = data,
+                           mtry = v[i,1], ntree = v[i,2], importance = TRUE)
+          
+          #Predecimos con el pliegue que hemos dejado fuera del entrenamiento
+          yhat.bag <- predict(bag,newdata = folds[[k]])
+          
+          #Guardamos la accuracy obtenida comparando las predicciones y los outputs reales del pliegue k
+          test_fold[k] <- MLmetrics::Accuracy(yhat.bag, folds[[k]]$Class)
+  }
+  
+    #Hacemos la media de los accuracy de todos los pliegues
+    mean_accuracy[i] <-  mean(test_fold)
+}
+```
+
+
+```{r}
+for (i in v) {
+  print(i)
+}
+```
+
+```{r}
+
+mean_accuracy
+```
+
+
+#Vayamos ahora con el segundo algortimo. Ahora los hiperparámetros son el número de nodos de la capa oculta y el porcentaje de dropout para la regularización.
+
+
+```{r}
+
+v1 <- c(50,0.2)
+
+v2 <- c(100,0.5)
+
+v3 <- c(200,0.8)
+
+v <- rbind(v1,v2,v3)
+
+test_fold <- rep(0,length(folds))
+
+mean_accuracy <- rep(0,dim(v)[1])
+
+
+
+for (i in 1:dim(v)[1]) {
+  for (k in seq(1:length(folds))) {
+          
+          #Juntamos todos los folds menos el k
+          data <- do.call(rbind, folds[-k])
+    
+          modnn <- keras_model_sequential() %>%
+                   layer_dense(units = v[i,1], activation = "sigmoid", input_shape = ncol(data)) %>%
+                   layer_dropout(rate = v[i,2]) %>% layer_dense(units = 2, activation = "softmax")
+          
+          
+          #Predecimos con el pliegue que hemos dejado fuera del entrenamiento
+          yhat.modnn <- predict(modnn,newdata = folds[[k]])
+          
+          #Guardamos la accuracy obtenida comparando las predicciones y los outputs reales del pliegue k
+          test_fold[k] <- MLmetrics::Accuracy(yhat.modnn, folds[[k]]$Class)
+  }
+  
+    #Hacemos la media de los accuracy de todos los pliegues
+    mean_accuracy[i] <-  mean(test_fold)
+}
+
 ```
 
