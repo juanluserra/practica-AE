@@ -137,14 +137,14 @@ mydf <- mydf[, -constant_cols]
 Finalmente, volvemos a hacer una revisión de las variables del dataset y asignamos los tipos correspondientes a cada variable.
 ```{r, eval=FALSE}
 # Pasamos los que tienen valores 0, 1 a factor.
-mydf$Fwd.PSH.Flags  <- as.factor(mydf$Fwd.PSH.Flags)
+mydf$Fwd.PSH.Flags <- as.factor(mydf$Fwd.PSH.Flags)
 mydf$FIN.Flag.Count <- as.factor(mydf$FIN.Flag.Count)
 mydf$SYN.Flag.Count <- as.factor(mydf$SYN.Flag.Count)
 mydf$PSH.Flag.Count <- as.factor(mydf$PSH.Flag.Count)
 mydf$ACK.Flag.Count <- as.factor(mydf$ACK.Flag.Count)
 mydf$URG.Flag.Count <- as.factor(mydf$URG.Flag.Count)
 mydf$CWE.Flag.Count <- as.factor(mydf$CWE.Flag.Count)
-mydf$Class          <- as.factor(mydf$Class)
+mydf$Class <- as.factor(mydf$Class)
 ```
 
 
@@ -174,12 +174,54 @@ Vemos que la proporción de casos positivos y negativos en el dataset sampleado 
 
 # 3. Elabora un análisis no supervisado (PCA) de las conexiones y explica lo que ves. ¿Cómo dirías que va a ser el problema de la elaboración de un modelo de clasificación que identifique conexiones de keystrokes en términos de dificultad? Razona la respuesta.
 
-Vamos a realizar el PCA con el conjunto preprocesado. Para ello, primero cargamos los datos preprocesados.
+Vamos a realizar el PCA con el conjunto preprocesado. Primero, cargamos los datos y seleccionamos las columnas numéricas.
+```{r}
+# Cargamos los datos
+mydf <- read.csv("sampled_preprocesed.csv", header = TRUE, sep = ",")
+
+# Seleccionamos las columnas numéricas
+mydf.numeric <- mydf[, sapply(mydf, is.numeric)]
+```
+
+Una vez que tenemos los datos, realizamos el PCA. No hace falta estandarizar las variales previamente ya que el PCA lo hace por nosotros con el parámetro `r scale = TRUE`.
 ```{r}
 # Realizamos PCA
+pr.out <- prcomp(mydf.numeric, scale = TRUE)
+```
 
+Vamos a realizar un análisis del PCA para ver qué información nos aporta. Para ello, primero vamos a ver la varianza acumulada, para determinar cuáles son las componentes principales más importantes.
+```{r}
+# Vemos la varianza explicada
+summary(pr.out)
 
+# Realizamos un gráfico de la varianza acumulada
+pr.out.cumvar <- cumsum(pr.out$sdev^2 / sum(pr.out$sdev^2))
+plot(
+  pr.out.cumvar,
+  xlab = "Principal Component",
+  ylab = "Cumulative Proportion of Variance Explained",
+  type = "b"
+)
 
+# Seleccionamos las componentes principales que expliquen al menos el 80% de la varianza
+ncomp <- which(pr.out.cumvar > 0.8)[1]
+```
+
+Vemos que necesitamos las 12 primeras componentes principales para explicar el 80% de la varianza. Solo con las 2 primeras componentes principales explicamos tan solo el 34% de la varianza, una cifra muy baja. Por tanto, necesitamos muchas componentes principales para explicar la varianza de los datos.
+
+Vamos a realizar un biplot para ver cómo se relacionan las variables con las dos primeras componentes principales.
+```{r}
+# Realizamos un biplot solo con los vectores, no con los datos
+png("biplot.png")
+biplot(pr.out, scale = 0, xlim = c(-15, 15), ylim = c(-15, 15))
+dev.off()
+```
+
+Como el dataset tiene demasiadas varaibles, el biplot se guarda en un .png para poder consultarse cuando se desee. Se puede ver en esta imagen que tenemos demasiados predictores y demasiados valores, no se puede sacar nada en claro. Además, como PC1 y PC2 explican solo el 34% de la varianza el biplot tampoco sería representativo.
+
+Por todo esto, podemos ver que la elaboración de un modelo de clasificación que identifique conexiones de keystrokes va a ser un problema complicado. Tenemos muchos predictores y ver las relaciones entre ellos no va a ser una tarea sencilla. Si intentásemos reducir la dimensionalidad del problea con PCA como mucho podríamos reducir a 12 dimensiones, lo cual sigue siendo una gan cantidad de variables.
+
+```{r}
 # Seleccionamos las columnas numéricas
 mydf.numeric <- mydf[, sapply(mydf, is.numeric)]
 
@@ -281,7 +323,7 @@ length(components[cumsum(components) <= 0.8])
 
 
 
-#```{r}
+```{r}
 # 4
 
 # Este problema sí podría resolverse con un algoritmo de regresión
@@ -312,7 +354,7 @@ logr.table <- table(logr.pred, mydf$Class)
 addmargins(round(prop.table(logr.table) * 100, 2))
 addmargins(round(prop.table(logr.table, 2) * 100, 1), 1)
 addmargins(round(prop.table(logr.table, 1) * 100, 1), 2)
-#```
+```
 
 
 # Predicción con modelos de machine learning
@@ -320,12 +362,11 @@ addmargins(round(prop.table(logr.table, 1) * 100, 1), 2)
 En primer lugar dividimos los datos en un conjunto de train y otro de test. Para el conjunto de test se cogerán 10000 datos, el resto será de train.
 
 ```{r}
-
-#Definimos el conjunto de test
+# Definimos el conjunto de test
 test_indices <- sample(1:nrow(mydf), 10000)
 test <- mydf[test_indices, ]
 
-#Definimos el conjunto de train
+# Definimos el conjunto de train
 train_indices <- setdiff(1:nrow(mydf), test_indices)
 train <- mydf[train_indices, ]
 ```
@@ -333,8 +374,7 @@ train <- mydf[train_indices, ]
 Para llevar a cabo el proceso de validación cruzada, dividiremos el conjunto de train en n pliegues. El número elegido será n=5 pliegues.
 
 ```{r}
-
-#Definimos el número de pliegues
+# Definimos el número de pliegues
 n <- 5
 
 # Generamos un vector de igual longitud que el numero de filas de train, asociando cada valor a un pliegue
@@ -342,7 +382,6 @@ folds_indexes <- sample(rep(1:n, length.out = nrow(train)))
 
 # Obtenemos los pliegues aplicando la secuencia anterior a los datos de train
 folds <- split(train, folds_indexes)
-
 ```
 
 Ahora que ya tenemos los pliegues creados, podemos empezar a usar los algoritmos de machine learning para predecir la variable Class. Los algortimos escogidos serán dos: Bagging y Red neuronal.
@@ -354,8 +393,7 @@ En este caso los hiperparámetros entre los cuales podemos elegir son dos: el n�
 Para determinar el rango de valores que podemos probar para mtry, podemos partir del valor usado por defecto en el algoritmo Random Forest para este hiperparámetro, sqrt(p), donde p es el número de predictores.
 
 ```{r}
-
-#Vemos cuál es el valor que usa el algoritmo Random Forest por defecto, sqrt(p)
+# Vemos cuál es el valor que usa el algoritmo Random Forest por defecto, sqrt(p)
 m_rf <- sqrt(dim(train)[2])
 ```
 
@@ -367,43 +405,44 @@ length(folds)
 ```
 
 ```{r}
-v1 <- c(6,100)
+v1 <- c(6, 100)
 
-v2 <- c(8,150)
+v2 <- c(8, 150)
 
-v3 <- c(10,200)
-
-
-v <- rbind(v1,v2,v3)
+v3 <- c(10, 200)
 
 
+v <- rbind(v1, v2, v3)
 
-test_fold <- rep(0,length(folds))
 
-mean_accuracy <- rep(0,dim(v)[1])
+
+test_fold <- rep(0, length(folds))
+
+mean_accuracy <- rep(0, dim(v)[1])
 
 
 
 
 for (i in 1:dim(v)[1]) {
   for (k in seq(1:length(folds))) {
-          
-          #Juntamos todos los folds menos el k
-          data <- do.call(rbind, folds[-k])
-    
-          #Creamos el modelo de bagging
-          bag <- randomForest(Class ~ ., data = data,
-                           mtry = v[i,1], ntree = v[i,2], importance = TRUE)
-          
-          #Predecimos con el pliegue que hemos dejado fuera del entrenamiento
-          yhat.bag <- predict(bag,newdata = folds[[k]])
-          
-          #Guardamos la accuracy obtenida comparando las predicciones y los outputs reales del pliegue k
-          test_fold[k] <- MLmetrics::Accuracy(yhat.bag, folds[[k]]$Class)
+    # Juntamos todos los folds menos el k
+    data <- do.call(rbind, folds[-k])
+
+    # Creamos el modelo de bagging
+    bag <- randomForest(Class ~ .,
+      data = data,
+      mtry = v[i, 1], ntree = v[i, 2], importance = TRUE
+    )
+
+    # Predecimos con el pliegue que hemos dejado fuera del entrenamiento
+    yhat.bag <- predict(bag, newdata = folds[[k]])
+
+    # Guardamos la accuracy obtenida comparando las predicciones y los outputs reales del pliegue k
+    test_fold[k] <- MLmetrics::Accuracy(yhat.bag, folds[[k]]$Class)
   }
-  
-    #Hacemos la media de los accuracy de todos los pliegues
-    mean_accuracy[i] <-  mean(test_fold)
+
+  # Hacemos la media de los accuracy de todos los pliegues
+  mean_accuracy[i] <- mean(test_fold)
 }
 ```
 
@@ -415,7 +454,6 @@ for (i in v) {
 ```
 
 ```{r}
-
 mean_accuracy
 ```
 
@@ -424,42 +462,40 @@ mean_accuracy
 
 
 ```{r}
+v1 <- c(50, 0.2)
 
-v1 <- c(50,0.2)
+v2 <- c(100, 0.5)
 
-v2 <- c(100,0.5)
+v3 <- c(200, 0.8)
 
-v3 <- c(200,0.8)
+v <- rbind(v1, v2, v3)
 
-v <- rbind(v1,v2,v3)
+test_fold <- rep(0, length(folds))
 
-test_fold <- rep(0,length(folds))
-
-mean_accuracy <- rep(0,dim(v)[1])
+mean_accuracy <- rep(0, dim(v)[1])
 
 
 
 for (i in 1:dim(v)[1]) {
   for (k in seq(1:length(folds))) {
-          
-          #Juntamos todos los folds menos el k
-          data <- do.call(rbind, folds[-k])
-    
-          modnn <- keras_model_sequential() %>%
-                   layer_dense(units = v[i,1], activation = "sigmoid", input_shape = ncol(data)) %>%
-                   layer_dropout(rate = v[i,2]) %>% layer_dense(units = 2, activation = "softmax")
-          
-          
-          #Predecimos con el pliegue que hemos dejado fuera del entrenamiento
-          yhat.modnn <- predict(modnn,newdata = folds[[k]])
-          
-          #Guardamos la accuracy obtenida comparando las predicciones y los outputs reales del pliegue k
-          test_fold[k] <- MLmetrics::Accuracy(yhat.modnn, folds[[k]]$Class)
-  }
-  
-    #Hacemos la media de los accuracy de todos los pliegues
-    mean_accuracy[i] <-  mean(test_fold)
-}
+    # Juntamos todos los folds menos el k
+    data <- do.call(rbind, folds[-k])
 
+    modnn <- keras_model_sequential() %>%
+      layer_dense(units = v[i, 1], activation = "sigmoid", input_shape = ncol(data)) %>%
+      layer_dropout(rate = v[i, 2]) %>%
+      layer_dense(units = 2, activation = "softmax")
+
+
+    # Predecimos con el pliegue que hemos dejado fuera del entrenamiento
+    yhat.modnn <- predict(modnn, newdata = folds[[k]])
+
+    # Guardamos la accuracy obtenida comparando las predicciones y los outputs reales del pliegue k
+    test_fold[k] <- MLmetrics::Accuracy(yhat.modnn, folds[[k]]$Class)
+  }
+
+  # Hacemos la media de los accuracy de todos los pliegues
+  mean_accuracy[i] <- mean(test_fold)
+}
 ```
 
