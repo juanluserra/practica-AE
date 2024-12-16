@@ -34,9 +34,16 @@ library(magrittr)
 set.seed(12345)
 ```
 
-# 1. Agrupar todas las variables del conjunto por temática, describiendo lo que significa cada uno de los grupos de características que has identificado. Se pide básicamente, terminar el trabajo empezado arriba cuando se han descrito las características relativas al flujo, a los paquetes del flujo, y tiempo transcurrido entre paquete y paquete. Identifica y describe las ya identificadas arriba junto con las que faltan. Dentro de las características de cada conexión, para la mayoría de categorías de características, se distingue entre características forward y backward. Explicar en que se diferencian unas de otras y mencionar las referencias documentales que se han usado para responder. Desde el punto de vista del análisis de datos, ¿es relevante diferencia entre características forward y backward? ¿Por qué?
+# 1. Agrupar variables.
 
-# 2. Plantear y ejecutar una estrategia que te permita trabajar con el conjunto de datos de manera holgada si tener que usar necesariamente los 90K ejemplos en memoria.
+**Enunciado:**
+Agrupar todas las variables del conjunto por temática, describiendo lo que significa cada uno de los grupos de características que has identificado. Se pide básicamente, terminar el trabajo empezado arriba cuando se han descrito las características relativas al flujo, a los paquetes del flujo, y tiempo transcurrido entre paquete y paquete. Identifica y describe las ya identificadas arriba junto con las que faltan. Dentro de las características de cada conexión, para la mayoría de categorías de características, se distingue entre características forward y backward. Explicar en que se diferencian unas de otras y mencionar las referencias documentales que se han usado para responder. Desde el punto de vista del análisis de datos, ¿es relevante diferencia entre características forward y backward? ¿Por qué?
+
+# 2. Estrategia de trabajo.
+
+**Enunciado:**
+Plantear y ejecutar una estrategia que te permita trabajar con el conjunto de datos de manera holgada si tener que usar necesariamente los 90K ejemplos en memoria.
+
 Para poder trabajar con el datastet de manera holgada, es conveniente crear un subconjunto de datos que sea manejable. Para ello, se puede seleccionar un número de filas aleatorio que sea manejable y que permita realizar el análisis de manera eficiente. Este subconjunto de datos deberá tener la misma distribución de casos positivos y negativos que el dataset original para no desbalancear el modelo. Para conseguir esto basta con escoger una muestra aleatoria de, por ejemplo, un 10% de las filas del dataset original con una probabilidad uniforme y sin reemplazo.
 
 Una forma de hacerlo puede ser con el código proporcionado:
@@ -44,8 +51,8 @@ Una forma de hacerlo puede ser con el código proporcionado:
 awk 'BEGIN {srand()} NR==1 {print > "sampled.csv"; next} rand() <= 0.1 {print >> "sampled.csv"}' Keylogger_Detection.csv
 ```
 
-Otra forma, aunque más lenta, sería cargar todo el dataset con R y seleccionar las filas aleatorias con la función `r sample()`. A continuación se muestra un ejemplo de cómo hacerlo con R:
-```{r}
+Otra forma, aunque más lenta, sería cargar todo el dataset con R y seleccionar las filas aleatorias con la función `sample()`. A continuación se muestra un ejemplo de cómo hacerlo con R:
+```{r, eval=FALSE}
 # Cargamos el dataset
 mydf <- read.csv("Keylogger_Detection.csv", header = TRUE, sep = ",")
 
@@ -57,6 +64,7 @@ write.csv(sampled, "sampled_2.csv", row.names = FALSE)
 ```
 
 Antes de realizar el sampleo del dataset, es necesario preprocesar los datos. De esta forma, guardaremos los datos listos para trabajar. En este preprocesamiento, se eliminarán las columnas que no aportan información relevante, se eliminarán las filas con valores nulos, se eliminarán las filas duplicadas, se convertirán las variables a un formato adecuado, y se eliminarán las variables constantes. Una vez realizado este preprocesamiento, se procederá a realizar el sampleo del dataset.
+
 
 ## 2.1. Preprocesamiento del dataset
 Cargamos los datos del dataset.
@@ -76,10 +84,15 @@ mydf <- mydf[, !names(mydf) %in% vars.to.remove]
 ```
 
 Se pueden ver algunas variables que no aportan información relevante, como "X", "Flow.ID", "Timestamp", "Source.IP", "Destination.IP", "Source.Port" y "Destination.Port".
+
 - "X" es un índice que no aporta información relevante.
+  
 - "Flow.ID" es un identificador del flujo, por lo que no es una característica como tal.
+  
 - "Timestamp" es un instante temporal, no es una característica del flujo y por tanto no aporta información relevante.
-- "Source.IP" y "Destination.IP" son identificadores de los dispositivos fuente y destino, respectivamente, y no son características del flujo. No aportan información al análisis. Además, no pueden interpretarse como variables ni numéricas ni categóricas (ya que tendráinn demasiados valores únicos), y no se puede realizar un análisis siendo variables de tipo character.
+
+- "Source.IP" y "Destination.IP" son identificadores de los dispositivos fuente y destino, respectivamente, y no son características del flujo. No aportan información al análisis. Además, no pueden interpretarse como variables ni numéricas ni categóricas (ya que tendrían demasiados valores únicos), y no se puede realizar un análisis siendo variables de tipo character.
+
 - "Source.Port" y "Destination.Port" son los puertos de origen y destino, respectivamente, y no son características del flujo. No aportan información al análisis. No pueden interpretarse como variables categóricas (ya que tendrían demasiados valores únicos), y no dan información real de tipo numérico.
 
 
@@ -135,7 +148,7 @@ mydf <- mydf[, -constant_cols]
 
 
 Finalmente, volvemos a hacer una revisión de las variables del dataset y asignamos los tipos correspondientes a cada variable.
-```{r, eval=FALSE}
+```{r}
 # Pasamos los que tienen valores 0, 1 a factor.
 mydf$Fwd.PSH.Flags <- as.factor(mydf$Fwd.PSH.Flags)
 mydf$FIN.Flag.Count <- as.factor(mydf$FIN.Flag.Count)
@@ -150,13 +163,9 @@ mydf$Class <- as.factor(mydf$Class)
 
 ## 2.2. Sampleo del dataset
 Ahora que tenemos el dataset preprocesado vamos a guardar el dataset en un fichero .csv para poder trabajar con él en el futuro. Además, crearemos un dataset con un 10% de las filas del dataset original para poder trabajar con él de manera holgada.
-```{r, eval=FALSE}
+```{r}
 # Guardamos el dataset preprocesado
 write.csv(mydf, "preprocessed.csv", row.names = FALSE)
-
-# Eliminamos las variables que no aportan información relevante
-vars.to.remove <- c("X", "Flow.ID", "Timestamp", "Source.IP", "Destination.IP", "Source.Port", "Destination.Port")
-mydf <- mydf[, !names(mydf) %in% vars.to.remove]
 
 # Seleccionamos un 10% de las filas
 sampled <- mydf[sample(nrow(mydf), nrow(mydf) * 0.1), ]
@@ -166,7 +175,7 @@ write.csv(sampled, "sampled_preprocesed.csv", row.names = FALSE)
 ```
 
 Comprobamos que el dataset sampleado tiene la misma proporción de casos positivos y negativos que el dataset original.
-```{r, eval=FALSE}
+```{r}
 # Comprobamos la proporción de casos positivos y negativos en el dataset original
 prop.table(table(mydf$Class)) * 100
 
@@ -175,7 +184,6 @@ prop.table(table(sampled$Class)) * 100
 ```
 
 Vemos que la proporción de casos positivos y negativos en el dataset sampleado es prácticamente la misma que en el dataset original. Por tanto, el dataset sampleado es válido para trabajar con él.
-
 # 3. Elabora un análisis no supervisado (PCA) de las conexiones y explica lo que ves. ¿Cómo dirías que va a ser el problema de la elaboración de un modelo de clasificación que identifique conexiones de keystrokes en términos de dificultad? Razona la respuesta.
 
 ## 3.1. Lectura y preprocesado de los datos

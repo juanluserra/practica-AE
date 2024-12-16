@@ -1,0 +1,185 @@
+---
+title: "Práctica Parte II. Aprendizaje Estadístico"
+author: "Antonio Galián Gálvez, Juan Luis Serradilla Tormos"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+    highlight: kate
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Lo primero es importar las librerías necesarias y configurar el directorio de trabajo. También se seleccionará una misma semilla aleatoria para todo el cuaderno.
+```{r}
+# Seleccioamos el directorio actual como directorio de trabajo
+# Si estamos compilando no lo hacemos para que no de error la compilación
+if (interactive()) {
+  setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+}
+
+# Cargamos las librerías necesarias
+library(summarytools)
+library(randomForest)
+library(keras)
+library(magrittr)
+
+# Seleccionamos la semilla aleatoria para todo el cuaderno
+set.seed(12345)
+```
+
+# 1. Agrupar variables.
+
+**Enunciado:**
+Agrupar todas las variables del conjunto por temática, describiendo lo que significa cada uno de los grupos de características que has identificado. Se pide básicamente, terminar el trabajo empezado arriba cuando se han descrito las características relativas al flujo, a los paquetes del flujo, y tiempo transcurrido entre paquete y paquete. Identifica y describe las ya identificadas arriba junto con las que faltan. Dentro de las características de cada conexión, para la mayoría de categorías de características, se distingue entre características forward y backward. Explicar en que se diferencian unas de otras y mencionar las referencias documentales que se han usado para responder. Desde el punto de vista del análisis de datos, ¿es relevante diferencia entre características forward y backward? ¿Por qué?
+
+# 2. Estrategia de trabajo.
+
+**Enunciado:**
+Plantear y ejecutar una estrategia que te permita trabajar con el conjunto de datos de manera holgada si tener que usar necesariamente los 90K ejemplos en memoria.
+
+Para poder trabajar con el datastet de manera holgada, es conveniente crear un subconjunto de datos que sea manejable. Para ello, se puede seleccionar un número de filas aleatorio que sea manejable y que permita realizar el análisis de manera eficiente. Este subconjunto de datos deberá tener la misma distribución de casos positivos y negativos que el dataset original para no desbalancear el modelo. Para conseguir esto basta con escoger una muestra aleatoria de, por ejemplo, un 10% de las filas del dataset original con una probabilidad uniforme y sin reemplazo.
+
+Una forma de hacerlo puede ser con el código proporcionado:
+```bash
+awk 'BEGIN {srand()} NR==1 {print > "sampled.csv"; next} rand() <= 0.1 {print >> "sampled.csv"}' Keylogger_Detection.csv
+```
+
+Otra forma, aunque más lenta, sería cargar todo el dataset con R y seleccionar las filas aleatorias con la función `sample()`. A continuación se muestra un ejemplo de cómo hacerlo con R:
+```{r, eval=FALSE}
+# Cargamos el dataset
+mydf <- read.csv("Keylogger_Detection.csv", header = TRUE, sep = ",")
+
+# Seleccionamos un 10% de las filas
+sampled <- mydf[sample(nrow(mydf), nrow(mydf) * 0.1), ]
+
+# Guardamos el subconjunto de datos
+write.csv(sampled, "sampled_2.csv", row.names = FALSE)
+```
+
+Antes de realizar el sampleo del dataset, es necesario preprocesar los datos. De esta forma, guardaremos los datos listos para trabajar. En este preprocesamiento, se eliminarán las columnas que no aportan información relevante, se eliminarán las filas con valores nulos, se eliminarán las filas duplicadas, se convertirán las variables a un formato adecuado, y se eliminarán las variables constantes. Una vez realizado este preprocesamiento, se procederá a realizar el sampleo del dataset.
+
+
+## 2.1. Preprocesamiento del dataset
+Cargamos los datos del dataset.
+```{r}
+# Cargamos los datos
+mydf <- read.csv("Keylogger_Detection.csv", header = TRUE, sep = ",")
+```
+
+Vemos el tipo de variables que hay dentro del dataset para comprobar cuáles no aportan información relevante.
+```{r}
+# Realizamos un resumen del DataFrame
+print(dfSummary(mydf), method = "render")
+
+# Eliminamos las variables que no aportan información relevante
+vars.to.remove <- c("X", "Flow.ID", "Timestamp", "Source.IP", "Destination.IP", "Source.Port", "Destination.Port")
+mydf <- mydf[, !names(mydf) %in% vars.to.remove]
+```
+
+Se pueden ver algunas variables que no aportan información relevante, como "X", "Flow.ID", "Timestamp", "Source.IP", "Destination.IP", "Source.Port" y "Destination.Port".
+
+- "X" es un índice que no aporta información relevante.
+  
+- "Flow.ID" es un identificador del flujo, por lo que no es una característica como tal.
+  
+- "Timestamp" es un instante temporal, no es una característica del flujo y por tanto no aporta información relevante.
+
+- "Source.IP" y "Destination.IP" son identificadores de los dispositivos fuente y destino, respectivamente, y no son características del flujo. No aportan información al análisis. Además, no pueden interpretarse como variables ni numéricas ni categóricas (ya que tendrían demasiados valores únicos), y no se puede realizar un análisis siendo variables de tipo character.
+
+- "Source.Port" y "Destination.Port" son los puertos de origen y destino, respectivamente, y no son características del flujo. No aportan información al análisis. No pueden interpretarse como variables categóricas (ya que tendrían demasiados valores únicos), y no dan información real de tipo numérico.
+
+
+Una vez hemos eliminado las variables que no aportan información relevante, pasamos a eliminar las filas con valores nulos. Antes de nada, hay que comprobar que no vayamos a eliminar una gran cantidad de filas.
+```{r}
+# Buscamos las filas con valores nulos
+na.coordinates <- which(is.na(mydf), arr.ind = TRUE)
+
+# Vemos las distintas filas en las que se encuentran
+na.rows <- unique(na.coordinates[, "row"])
+
+# Calculamos la proporción respecto al número total de filas
+na.prows <- length(na.rows) / nrow(mydf) * 100
+paste("El porcentaje de filas con nulos es: ", na.prows, "%", sep = "")
+```
+
+Vemos que el porcentaje de filas a eliminar es muy bajo, así que eliminamos las filas con valores NA del DataFrame.
+```{r}
+# Eliminamos las filas con valores nulos
+mydf <- na.omit(mydf)
+```
+
+Ahora, eliminamos las filas duplicadas.
+```{r}
+# Eliminamos las filas duplicadas
+mydf <- mydf[!duplicated(mydf), ]
+```
+
+Vamos a eliminar las columnas con desviación estándar cero. Para ello, psaremos a numérico todas las variables que no sean claramente carácteres.
+```{r}
+# Pasamos a numérico las variables que les corresponde
+mydf$Packet.Length.Std <- as.numeric(mydf$Packet.Length.Std)
+```
+
+Al analizar las variables vemos que hay una con una situación particular. Esta es "CWE.Flag.Count", que tiene valores "0" y "0.0". Además, los valores "0.0" no son pocos, suponen el 6% del total, más que los valores "1" de otros Flags como "FIN.Flag.Count", que solo el 1.7% son valores 1. Esto puede deberse a que por un error los valores 0.0 deberían ser 1. Si fuera un error de tipografía que pasará algunos valores 0 a 0.0 no habría tantos casos. Por lo tanto, se convertirán los valores "0.0" a "1" para que siga el formato común con los otros Flags.
+
+```{r}
+# Convertimos los "0.0" a 1
+mydf$CWE.Flag.Count <- ifelse(mydf$CWE.Flag.Count == "0.0", "1", mydf$CWE.Flag.Count)
+
+# Pasamos a numérico la variable
+mydf$CWE.Flag.Count <- as.numeric(mydf$CWE.Flag.Count)
+
+# Seleccionamos las columnas numéricas
+num_cols <- which(sapply(mydf, is.numeric))
+
+# Obtenemos las columnas con desviaciones estándar nulas
+constant_cols <- which(sapply(mydf[, num_cols], sd) == 0)
+
+# Eliminamos las columnas con valores constantes
+mydf <- mydf[, -constant_cols]
+```
+
+
+Finalmente, volvemos a hacer una revisión de las variables del dataset y asignamos los tipos correspondientes a cada variable.
+```{r}
+# Pasamos los que tienen valores 0, 1 a factor.
+mydf$Fwd.PSH.Flags <- as.factor(mydf$Fwd.PSH.Flags)
+mydf$FIN.Flag.Count <- as.factor(mydf$FIN.Flag.Count)
+mydf$SYN.Flag.Count <- as.factor(mydf$SYN.Flag.Count)
+mydf$PSH.Flag.Count <- as.factor(mydf$PSH.Flag.Count)
+mydf$ACK.Flag.Count <- as.factor(mydf$ACK.Flag.Count)
+mydf$URG.Flag.Count <- as.factor(mydf$URG.Flag.Count)
+mydf$CWE.Flag.Count <- as.factor(mydf$CWE.Flag.Count)
+mydf$Class <- as.factor(mydf$Class)
+```
+
+
+## 2.2. Sampleo del dataset
+Ahora que tenemos el dataset preprocesado vamos a guardar el dataset en un fichero .csv para poder trabajar con él en el futuro. Además, crearemos un dataset con un 10% de las filas del dataset original para poder trabajar con él de manera holgada.
+```{r}
+# Guardamos el dataset preprocesado
+write.csv(mydf, "preprocessed.csv", row.names = FALSE)
+
+# Seleccionamos un 10% de las filas
+sampled <- mydf[sample(nrow(mydf), nrow(mydf) * 0.1), ]
+
+# Guardamos el subconjunto de datos
+write.csv(sampled, "sampled_preprocesed.csv", row.names = FALSE)
+```
+
+Comprobamos que el dataset sampleado tiene la misma proporción de casos positivos y negativos que el dataset original.
+```{r}
+# Comprobamos la proporción de casos positivos y negativos en el dataset original
+prop.table(table(mydf$Class)) * 100
+
+# Comprobamos la proporción de casos positivos y negativos en el dataset sampleado
+prop.table(table(sampled$Class)) * 100
+```
+
+Vemos que la proporción de casos positivos y negativos en el dataset sampleado es prácticamente la misma que en el dataset original. Por tanto, el dataset sampleado es válido para trabajar con él.
