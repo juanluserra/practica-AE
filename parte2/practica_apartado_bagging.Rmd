@@ -80,13 +80,13 @@ registerDoParallel(cl)
 values.mtry.op <- as.integer(sqrt(ncol(mydf)))
 values.mtry <- c(values.mtry.op - 1, values.mtry.op, values.mtry.op + 1)
 values.ntree <- c(300, 500, 700)
-values.nsizes <- c(300, 500, 700)
+values.nsizes <- c(1500,2000,2500)
 
 # Creamos una matriz con todas las combinaciones posibles de los valores de mtry, ntree y nodesize
 v <- expand.grid(values.mtry, values.ntree, values.nsizes)
 
-test_fold <- rep(0, length(folds))
-mean_accuracy <- rep(0, dim(v)[1])
+f1.score.fold <- rep(0, length(folds))
+accuracy.fold <- rep(0, length(folds))
 
 # Entrenamos el modelo de bagging en paralelo
 mean_accuracy_sd <- foreach(i = 1:nrow(v), .combine = rbind, .packages = c("randomForest", "MLmetrics")) %dopar% {
@@ -105,17 +105,37 @@ mean_accuracy_sd <- foreach(i = 1:nrow(v), .combine = rbind, .packages = c("rand
     yhat.bag <- predict(bag, newdata = folds[[k]])
 
     # Guardamos la accuracy obtenida comparando las predicciones y los outputs reales del pliegue k
-    test_fold[k] <- F1_Score(y_pred = yhat.bag, y_true = folds[[k]]$Class, positive = "Keylogger")
+    f1.score.fold[k] <- F1_Score(y_pred = yhat.bag, y_true = folds[[k]]$Class, positive = "Keylogger")
+    accuracy.fold[k] <- Accuracy(y_pred = yhat.bag, y_true = folds[[k]]$Class)
   }
 
   print(paste("Se ha probado el vector", i))
 
   # Hacemos la media de los accuracy de todos los pliegues
-  mean_test_fold <- mean(test_fold)
-  sd_test_fold <- sd(test_fold)
-  c(mean_test_fold, sd_test_fold)
+  mean_f1.score_fold <- mean(f1.score.fold)
+  mean_accuracy_fold <- mean(accuracy.fold)
+
+  
+  sd_f1.score_fold <- sd(f1.score.fold)/sqrt(length(folds))
+  sd_accuracy_fold <- sd(accuracy.fold)/sqrt(length(folds))
+  c(mean_f1.score_fold, sd_f1.score_fold, mean_accuracy_fold, sd_accuracy_fold)
 }
 
 # Stop the cluster
 stopCluster(cl)
 ```
+
+
+```{r}
+
+mean_accuracy_sd
+
+
+
+plot(mean_accuracy_sd[,1]/max(mean_accuracy_sd[,1]))
+
+points(mean_accuracy_sd[,3]/max(mean_accuracy_sd[,3]),col=2)
+
+plot(mean_accuracy_sd[,3])
+```
+
