@@ -74,11 +74,7 @@ library(doParallel)
 
 # Set up parallel backend to use multiple processors
 cl <- makeCluster(detectCores() - 1) # Leave one core free
-cl <- makeCluster(4) # Leave one core free
 registerDoParallel(cl)
-
-test_fold <- rep(0, length(folds))
-mean_accuracy <- rep(0, dim(v)[1])
 
 # Definimos los valores de mtry, ntree y nodesize que vamos a probar
 values.mtry.op <- as.integer(sqrt(ncol(mydf)))
@@ -89,8 +85,11 @@ values.nsizes <- c(300, 500, 700)
 # Creamos una matriz con todas las combinaciones posibles de los valores de mtry, ntree y nodesize
 v <- expand.grid(values.mtry, values.ntree, values.nsizes)
 
+test_fold <- rep(0, length(folds))
+mean_accuracy <- rep(0, dim(v)[1])
+
 # Entrenamos el modelo de bagging en paralelo
-mean_accuracy <- foreach(i = 1:nrow(v), .combine = c, .packages = c("randomForest", "MLmetrics")) %dopar% {
+mean_accuracy_sd <- foreach(i = 1:nrow(v), .combine = rbind, .packages = c("randomForest", "MLmetrics")) %dopar% {
   test_fold <- rep(0, length(folds))
   for (k in seq(1:length(folds))) {
     # Juntamos todos los folds menos el k
@@ -106,123 +105,17 @@ mean_accuracy <- foreach(i = 1:nrow(v), .combine = c, .packages = c("randomFores
     yhat.bag <- predict(bag, newdata = folds[[k]])
 
     # Guardamos la accuracy obtenida comparando las predicciones y los outputs reales del pliegue k
-    test_fold[k] <- Accuracy(yhat.bag, folds[[k]]$Class)
+    test_fold[k] <- F1_Score(y_pred = yhat.bag, y_true = folds[[k]]$Class, positive = "Keylogger")
   }
 
   print(paste("Se ha probado el vector", i))
 
   # Hacemos la media de los accuracy de todos los pliegues
-  mean(test_fold)
+  mean_test_fold <- mean(test_fold)
+  sd_test_fold <- sd(test_fold)
+  c(mean_test_fold, sd_test_fold)
 }
 
 # Stop the cluster
 stopCluster(cl)
 ```
-
-```{r}
-test_fold <- rep(0, length(folds))
-mean_accuracy <- rep(0, dim(v)[1])
-
-
-# Definimos los valores de mtry, ntree y nodesize que vamos a probar
-values.mtry.op <- as.integer(sqrt(ncol(mydf)))
-values.mtry <- c(values.mtry.op - 1, values.mtry.op, values.mtry.op + 1)
-values.ntree <- c(300, 500, 700)
-values.nsizes <- c(300, 500, 700)
-
-# Creamos una matriz con todas las combinaciones posibles de los valores de mtry, ntree y nodesize
-v <- expand.grid(values.mtry, values.ntree, values.nsizes)
-
-# Entrenamos el modelo de bagging
-for (i in 1:nrow(v)) {
-  for (k in seq(1:length(folds))) {
-    # Juntamos todos los folds menos el k
-    data <- do.call(rbind, folds[-k])
-
-    # Creamos el modelo de bagging
-    bag <- randomForest(Class ~ .,
-      data = data,
-      mtry = v[i, 1], ntree = v[i, 2], maxnodes = v[i, 3]
-    )
-
-    # Predecimos con el pliegue que hemos dejado fuera del entrenamiento
-    yhat.bag <- predict(bag, newdata = folds[[k]])
-
-    # Guardamos la accuracy obtenida comparando las predicciones y los outputs reales del pliegue k
-    test_fold[k] <- Accuracy(yhat.bag, folds[[k]]$Class)
-  }
-
-  print(paste("Se ha probado el vector", i))
-
-  # Hacemos la media de los accuracy de todos los pliegues
-  mean_accuracy[i] <- mean(test_fold)
-}
-```
-
-
-```{r}
-v1 <- c(8, 300, 750, 1)
-
-v2 <- c(8, 300, 750, 2)
-
-v3 <- c(8, 300, 750, 5)
-
-v4 <- c(8, 300, 750, 10)
-
-v5 <- c(8, 300, 750, 15)
-
-# vector de parametros "optimos"
-v_op <- c(8, 300, 750, 5)
-
-
-
-v <- rbind(v1, v2, v3, v4, v5)
-
-
-
-test_fold <- rep(0, length(folds))
-
-mean_accuracy <- rep(0, dim(v)[1])
-
-
-
-
-for (i in 1:dim(v)[1]) {
-  for (k in seq(1:length(folds))) {
-    # Juntamos todos los folds menos el k
-    data <- do.call(rbind, folds[-k])
-
-    # Creamos el modelo de bagging
-    bag <- randomForest(Class ~ .,
-      data = data,
-      mtry = v[i, 1], ntree = v[i, 2], maxnodes = v[i, 3], nodesize = v[i, 4]
-    )
-
-    # Predecimos con el pliegue que hemos dejado fuera del entrenamiento
-    yhat.bag <- predict(bag, newdata = folds[[k]])
-
-    # Guardamos la accuracy obtenida comparando las predicciones y los outputs reales del pliegue k
-    test_fold[k] <- MLmetrics::Accuracy(yhat.bag, folds[[k]]$Class)
-  }
-
-  print(paste("Se ha probado el vector", i))
-
-  # Hacemos la media de los accuracy de todos los pliegues
-  mean_accuracy[i] <- mean(test_fold)
-}
-```
-
-```{r}
-mean_accuracy
-
-# Guardamos mean_accuracy en un archivo .csv
-results <- data.frame(mean_accuracy = mean_accuracy, mtry = v[, 1], ntree = v[, 2], maxnodes = v[, 3], nodesize = v[, 4])
-
-results
-
-write.csv(results, "results_bagging.csv", row.names = FALSE)
-
-plot(results$mean_accuracy)
-```
-
-
