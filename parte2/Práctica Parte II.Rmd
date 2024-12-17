@@ -36,8 +36,7 @@ set.seed(12345)
 
 # 1. Agrupar variables.
 
-**Enunciado:**
-Agrupar todas las variables del conjunto por temática, describiendo lo que significa cada uno de los grupos de características que has identificado. Se pide básicamente, terminar el trabajo empezado arriba cuando se han descrito las características relativas al flujo, a los paquetes del flujo, y tiempo transcurrido entre paquete y paquete. Identifica y describe las ya identificadas arriba junto con las que faltan. Dentro de las características de cada conexión, para la mayoría de categorías de características, se distingue entre características forward y backward. Explicar en que se diferencian unas de otras y mencionar las referencias documentales que se han usado para responder. Desde el punto de vista del análisis de datos, ¿es relevante diferencia entre características forward y backward? ¿Por qué?
+**_Enunciado:_ Agrupar todas las variables del conjunto por temática, describiendo lo que significa cada uno de los grupos de características que has identificado. Se pide básicamente, terminar el trabajo empezado arriba cuando se han descrito las características relativas al flujo, a los paquetes del flujo, y tiempo transcurrido entre paquete y paquete. Identifica y describe las ya identificadas arriba junto con las que faltan. Dentro de las características de cada conexión, para la mayoría de categorías de características, se distingue entre características forward y backward. Explicar en que se diferencian unas de otras y mencionar las referencias documentales que se han usado para responder. Desde el punto de vista del análisis de datos, ¿es relevante diferencia entre características forward y backward? ¿Por qué?**
 
 # 2. Estrategia de trabajo.
 
@@ -416,10 +415,7 @@ for (i in v) {
 ```{r}
 mean_accuracy
 # Guardamos mean_accuracy en un archivo .csv
-results <- data.frame()
-results$mean_accuracy <- mean_accuracy
-results$mtry <- v[, 1]
-results$ntree <- v[, 2]
+results <- data.frame(mean_accuracy = mean_accuracy, mtry = v[, 1], ntree = v[, 2])
 
 write.csv(results, "results_bagging.csv", row.names = FALSE)
 ```
