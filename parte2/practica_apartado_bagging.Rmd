@@ -1,0 +1,138 @@
+---
+title: "practica_apartado_bagging"
+author: "Antonio Galián Gálvez"
+date: "2024-12-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# Seleccioamos el directorio actual como directorio de trabajo
+# Si estamos compilando no lo hacemos para que no de error la compilación
+if (interactive()) {
+  setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+}
+
+# Cargamos las librerías necesarias
+library(summarytools)
+library(randomForest)
+library(keras)
+library(magrittr)
+
+# Seleccionamos la semilla aleatoria para todo el cuaderno
+set.seed(12345)
+```
+
+```{r}
+# Leemos el dataset preprocesado
+mydf <- read.csv("sampled_preprocesed.csv", header = TRUE, sep = ",")
+
+# Pasamos las variables correspondientes a factor
+mydf$Protocol <- as.factor(mydf$Protocol)
+mydf$Fwd.PSH.Flags <- as.factor(mydf$Fwd.PSH.Flags)
+mydf$FIN.Flag.Count <- as.factor(mydf$FIN.Flag.Count)
+mydf$SYN.Flag.Count <- as.factor(mydf$SYN.Flag.Count)
+mydf$PSH.Flag.Count <- as.factor(mydf$PSH.Flag.Count)
+mydf$ACK.Flag.Count <- as.factor(mydf$ACK.Flag.Count)
+mydf$URG.Flag.Count <- as.factor(mydf$URG.Flag.Count)
+mydf$CWE.Flag.Count <- as.factor(mydf$CWE.Flag.Count)
+mydf$Class <- as.factor(mydf$Class)
+
+# Nos aseguramos de que la clase positiva sea "Keylogger" asignando como clase de referencia a "Benign"
+mydf$Class <- relevel(mydf$Class, ref = "Benign")
+```
+
+```{r}
+# Definimos el conjunto de test
+test_indices <- sample(1:nrow(mydf), as.integer(0.3*nrow(mydf)))
+test <- mydf[test_indices, ]
+
+# Definimos el conjunto de train
+train_indices <- setdiff(1:nrow(mydf), test_indices)
+train <- mydf[train_indices, ]
+```
+
+Para llevar a cabo el proceso de validación cruzada, dividiremos el conjunto de train en n pliegues. El número elegido será n=5 pliegues.
+
+```{r}
+# Definimos el número de pliegues
+n <- 5
+
+# Generamos un vector de igual longitud que el numero de filas de train, asociando cada valor a un pliegue
+folds_indexes <- sample(rep(1:n, length.out = nrow(train)))
+
+# Obtenemos los pliegues aplicando la secuencia anterior a los datos de train
+folds <- split(train, folds_indexes)
+```
+
+```{r}
+v1 <- c(8, 300,750,1)
+
+v2 <- c(8, 300,750,2)
+
+v3 <- c(8, 300,750,5)
+
+v4 <- c(8, 300,750,10)
+
+v5 <- c(8, 300,750,15)
+
+# vector de parametros "optimos"
+v_op <- c(8, 300,750,5)
+
+
+
+v <- rbind(v1, v2, v3,v4,v5)
+
+
+
+test_fold <- rep(0, length(folds))
+
+mean_accuracy <- rep(0, dim(v)[1])
+
+
+
+
+for (i in 1:dim(v)[1]) {
+  for (k in seq(1:length(folds))) {
+    # Juntamos todos los folds menos el k
+    data <- do.call(rbind, folds[-k])
+
+    # Creamos el modelo de bagging
+    bag <- randomForest(Class ~ .,
+      data = data,
+      mtry = v[i, 1], ntree = v[i, 2], maxnodes = v[i,3], nodesize = v[i,4]
+    )
+
+    # Predecimos con el pliegue que hemos dejado fuera del entrenamiento
+    yhat.bag <- predict(bag, newdata = folds[[k]])
+
+    # Guardamos la accuracy obtenida comparando las predicciones y los outputs reales del pliegue k
+    test_fold[k] <- MLmetrics::Accuracy(yhat.bag, folds[[k]]$Class)
+  }
+  
+  print(paste("Se ha probado el vector",i))
+
+  # Hacemos la media de los accuracy de todos los pliegues
+  mean_accuracy[i] <- mean(test_fold)
+}
+```
+
+```{r}
+mean_accuracy
+
+# Guardamos mean_accuracy en un archivo .csv
+results <- data.frame(mean_accuracy = mean_accuracy, mtry = v[, 1], ntree = v[, 2],maxnodes = v[,3], nodesize = v[,4])
+
+results
+
+write.csv(results, "results_bagging.csv", row.names = FALSE)
+
+plot(results$mean_accuracy)
+
+
+```
+
+
