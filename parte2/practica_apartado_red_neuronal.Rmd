@@ -187,8 +187,6 @@ for (i in seq(1:length(mean_accuracy_sd_w_max[,1]))) {
   
 }
 
-
-
 #plot(mean_accuracy_sd[, 1] / max(mean_accuracy_sd[, 1]), main = "Accuracy relativo")
 
 # plot(mean_accuracy_sd[,3]/max(mean_accuracy_sd[,3]),main="Accuracy relativo")
@@ -212,8 +210,10 @@ print(resultado)
 ```
 
 #################################################
+#Lo siguiente es lo que habia antes
 #################################################
 #################################################
+
 """
 ```{r,eval=FALSE}
 library(doParallel)
@@ -299,7 +299,3 @@ train_time <- as.numeric(difftime(final, inicio, units = "secs"))
 # Stop the cluster
 stopCluster(cl)
 ```
-
-# hacer ncol(mydf) - 1
-# pasar mydf a is.numeric(mydf) (coger solo variables numericas)
-# hacer one-standard-error
