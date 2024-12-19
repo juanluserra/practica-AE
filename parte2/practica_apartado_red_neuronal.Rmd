@@ -46,8 +46,9 @@ mydf$Class <- as.factor(mydf$Class)
 mydf$Class <- relevel(mydf$Class, ref = "Benign")
 
 #Nos quedamos con las columnas numéricas
-mydf.numeric <- mydf[,which(sapply(mydf, is.numeric))]
-mydf.numeric <- as.data.frame(scale(mydf.numeric))
+# mydf.numeric <- mydf[,which(sapply(mydf, is.numeric))]
+# mydf.numeric <- as.data.frame(scale(mydf.numeric))
+mydf.numeric <- as.data.frame(scale(sapply(mydf, as.numeric)))
 
 # Añadimos la columna a predecir
 mydf.numeric$Class <- mydf$Class
@@ -87,8 +88,8 @@ cl <- makeCluster(detectCores() - 1) # Leave one core free
 registerDoParallel(cl)
 
 # Definimos los valores de mtry, ntree y nodesize que vamos a probar
-values.nneurons1 <- c(2**4, 2**5, 2**6)
-values.nneurons2 <- c(0, 2**4, 2**5, 2**6)
+values.nneurons1 <- c(2**4, 2**5, 1024)
+values.nneurons2 <- c(0, 2**4, 2**5, 1024)
 values.epochs <- c(50, 100, 150, 200)
 
 v <- expand.grid(values.nneurons1, values.nneurons2, values.epochs)
