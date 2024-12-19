@@ -61,8 +61,17 @@ _Aquí debemos agrupar las variables por grupos._
 # Preprocesamiento de los datos. {#preprocesamiento}
 Antes de empezar con los análisis se deben preprocesar los datos. En este sección se explicarán los preprocesamientos realizados y sus razonamientos.
 
-Lo primero de todo es eliminar del dataset las variables que no aportan información relevante para el análisis.
+Lo primero de todo es visualzar el dataset completo con todas sus variables:
 ```{r}
+# Mostramos el dataset completo
+dfSummary(mydf)
+```
+
+Ahora vamos a eliminar del dataset las variables que no aportan información relevante para el análisis.
+```{r}
+# Guardamos una copia del dataset original para comparar posteriormente
+mydf.original <- mydf
+
 # Seleccionamos los predictores que no aportan información relevante
 vars.to.remove <- c("X", "Flow.ID", "Timestamp", "Source.IP", "Destination.IP", "Source.Port", "Destination.Port")
 
@@ -79,7 +88,70 @@ La explicación de por qué hemos eliminado cada variable es la siguiente:
 - "Source.Port" y "Destination.Port" son los puertos de origen y destino, respectivamente, y no son características del flujo. No aportan información al análisis. No pueden interpretarse como variables categóricas (ya que tendrían demasiados valores únicos), y no dan información real de tipo numérico.
 
 
-Una vez eliminamos las variables innecesarias, vamos a comprobar los valores nulos del dataset y ver cómo los tratamos.
+Una vez eliminamos las variables innecesarias, vamos a comprobar los valores nulos del dataset y ver cómo los tratamos. Empecemos viendo la cantidad de filas con nulos.
+```{r}
+# Buscamos las filas con valores nulos
+na.coordinates <- which(is.na(mydf), arr.ind = TRUE)
+
+# Vemos las distintas filas en las que se encuentran
+na.rows <- unique(na.coordinates[, "row"])
+
+# Calculamos la proporción respecto al número total de filas
+na.prows <- length(na.rows) / nrow(mydf) * 100
+paste("El porcentaje de filas con nulos es: ", na.prows, "%", sep = "")
+```
+
+Vemos que el dataset contiene muy poca cantidad de valores nulos. Por lo tanto, eliminamos las filas con valores NA.
+```{r}
+# Eliminamos las filas con valores nulos
+mydf <- na.omit(mydf)
+```
+
+Ahora, eliminamos las filas duplicadas.
+```{r}
+# Eliminamos las filas duplicadas
+mydf <- mydf[!duplicated(mydf), ]
+```
+
+Vamos a eliminar las columnas con desviación estándar cero. Para ello, psaremos a numérico todas las variables que no sean claramente carácteres.
+```{r}
+# Pasamos a numérico las variables que les corresponde
+mydf$Packet.Length.Std <- as.numeric(mydf$Packet.Length.Std)
+```
+
+Al analizar las variables vemos que hay una con una situación particular. Esta es "CWE.Flag.Count", que tiene valores "0" y "0.0". Además, los valores "0.0" no son pocos, suponen el 6% del total, más que los valores "1" de otros Flags como "FIN.Flag.Count", que solo el 1.7% son valores 1. Esto puede deberse a que por un error los valores 0.0 deberían ser 1. Si fuera un error de tipografía que pasará algunos valores 0 a 0.0 no habría tantos casos. Por lo tanto, se convertirán los valores "0.0" a "1" para que siga el formato común con los otros Flags.
+
+```{r}
+# Convertimos los "0.0" a 1
+mydf$CWE.Flag.Count <- ifelse(mydf$CWE.Flag.Count == "0.0", "1", mydf$CWE.Flag.Count)
+
+# Pasamos a numérico la variable
+mydf$CWE.Flag.Count <- as.numeric(mydf$CWE.Flag.Count)
+
+# Seleccionamos las columnas numéricas
+num_cols <- which(sapply(mydf, is.numeric))
+
+# Obtenemos las columnas con desviaciones estándar nulas
+constant_cols <- which(sapply(mydf[, num_cols], sd) == 0)
+
+# Eliminamos las columnas con valores constantes
+mydf <- mydf[, -constant_cols]
+```
+
+Finalmente, volvemos a hacer una revisión de las variables del dataset y asignamos los tipos correspondientes a cada variable.
+```{r}
+# Pasamos los que tienen valores 0, 1 a factor.
+mydf$Fwd.PSH.Flags <- as.factor(mydf$Fwd.PSH.Flags)
+mydf$FIN.Flag.Count <- as.factor(mydf$FIN.Flag.Count)
+mydf$SYN.Flag.Count <- as.factor(mydf$SYN.Flag.Count)
+mydf$PSH.Flag.Count <- as.factor(mydf$PSH.Flag.Count)
+mydf$ACK.Flag.Count <- as.factor(mydf$ACK.Flag.Count)
+mydf$URG.Flag.Count <- as.factor(mydf$URG.Flag.Count)
+mydf$CWE.Flag.Count <- as.factor(mydf$CWE.Flag.Count)
+mydf$Class <- as.factor(mydf$Class)
+```
+
+Para ver que el dataset procesado sirve para trabajar, vamos a comparar el porcentaje de valores positivos y negativos en los dos dasatet.
 
 # Sampleo de los datos. {#sampleo}
 
