@@ -104,18 +104,23 @@ inicio <- Sys.time()
 mean_accuracy_sd <- foreach(i = 1:nrow(v), .combine = rbind, .packages = c("keras", "MLmetrics")) %dopar% {
   test_fold <- rep(0, length(folds))
 
+  class_weights <- list(
+      "0" = 1, # Peso para la clase "benigno"
+      "1" = 0.585 / 0.415  # Peso para la clase "keylogger"
+    )
+
   # Creamos la red neuronal con los parámetros de los vectores
   if (v[i, 2] == 0) {
     modnn <- keras_model_sequential() %>%
       layer_dense(units = v[i, 1], activation = "relu", input_shape = c(ncol(mydf.numeric)-1)) %>%
-      layer_dropout(rate = 0.5) %>%
+      layer_dropout(rate = 0.1) %>%
       layer_dense(units = 2, activation = "softmax")
   } else {
     modnn <- keras_model_sequential() %>%
       layer_dense(units = v[i, 1], activation = "relu", input_shape = c(ncol(mydf.numeric)-1)) %>%
-      layer_dropout(rate = 0.5) %>%
+      layer_dropout(rate = 0.1) %>%
       layer_dense(units = v[i, 2], activation = "relu") %>%
-      layer_dropout(rate = 0.5) %>%
+      layer_dropout(rate = 0.1) %>%
       layer_dense(units = 2, activation = "softmax")
   }
 
@@ -136,7 +141,7 @@ mean_accuracy_sd <- foreach(i = 1:nrow(v), .combine = rbind, .packages = c("kera
 
     y_train <- to_categorical(y_train, 2)
     # Entrenamos la red con el conjunto de entrenamiento
-    modnn %>% fit(x_train, y_train, epochs = v[i, 3], verbose = 1)
+    modnn %>% fit(x_train, y_train, epochs = v[i, 3], verbose = 1, class_weight = class_weights)
 
     # Creamos las variables de entrada y salida para el conjunto de test
     x_test <- as.matrix(folds[[k]][, -ncol(folds[[k]])])
@@ -144,7 +149,7 @@ mean_accuracy_sd <- foreach(i = 1:nrow(v), .combine = rbind, .packages = c("kera
 
     # Predecimos la probabilidad de que la variable de salida sea "Keylogger"
     yhat.modnn <- predict(modnn, x_test)
-    y_pred_class <- ifelse(yhat.modnn[, 1] > 0.5, 0, 1)
+    y_pred_class <- ifelse(yhat.modnn[, 2] > 0.5, 1, 0)
 
     # Guardamos la accuracy obtenida comparando las predicciones y los outputs reales del pliegue k
     # f1.score.fold[k] <- F1_Score(y_pred = y_pred_class, y_true = y_test, positive = "1")
