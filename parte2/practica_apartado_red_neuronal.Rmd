@@ -70,6 +70,8 @@ folds <- split(train, folds_indexes)
 ```
 
 
+
+
 ```{r}
 library(doParallel)
 
@@ -78,14 +80,14 @@ cl <- makeCluster(detectCores() - 1) # Leave one core free
 registerDoParallel(cl)
 
 # Definimos los valores de mtry, ntree y nodesize que vamos a probar
-values.units.layer.1 <- 2**c(4,5,6)
-values.dropout.rate.1 <- c(0.3,0.5)
-values.units.layer.2 <- 2**c(4,5,6)
-values.dropout.rate.2 <- c(0.3,0.5)
-values.epochs <- c(50,100,150,200)
+values.units.layer.1 <- 2**c(4, 5, 6)
+values.dropout.rate.1 <- c(0.3, 0.5)
+values.units.layer.2 <- 2**c(4, 5, 6)
+values.dropout.rate.2 <- c(0.3, 0.5)
+values.epochs <- c(50, 100, 150, 200)
 
 # Creamos una matriz con todas las combinaciones posibles de los valores de mtry, ntree y nodesize
-v <- expand.grid(values.units.layer.1,values.dropout.rate.1,values.units.layer.2,values.dropout.rate.2,values.epochs)
+v <- expand.grid(values.units.layer.1, values.dropout.rate.1, values.units.layer.2, values.dropout.rate.2, values.epochs)
 
 colnames(v) <- c("Units Layer 1", "Dropout Rate 1", "Units Layer 2", "Dropout Rate 2", "Épocas")
 
@@ -98,52 +100,52 @@ inicio <- Sys.time()
 mean_accuracy_sd <- foreach(i = 1:nrow(v), .combine = rbind, .packages = c("keras", "MLmetrics")) %dopar% {
   test_fold <- rep(0, length(folds))
   for (k in seq(1:length(folds))) {
-    
     # Juntamos todos los folds menos el k
     data <- do.call(rbind, folds[-k])
-    
-    #Definimos las variables de entrada y de salida del conjunto de entrenamiento
+
+    # Definimos las variables de entrada y de salida del conjunto de entrenamiento
     x_train <- as.matrix(sapply(data[, -ncol(data)], as.numeric))
     y_train <- as.numeric(data$Class == "Keylogger")
 
-    #Creamos la red neuronal
+    # Creamos la red neuronal
     modnn <- keras_model_sequential() %>%
       layer_dense(units = v[i, 1], activation = "relu", input_shape = ncol(x_train)) %>%
       layer_dropout(rate = v[i, 2]) %>%
       layer_dense(units = v[i, 3], activation = "relu") %>%
       layer_dropout(rate = v[i, 4]) %>%
       layer_dense(units = 1, activation = "sigmoid")
-    
-    #La compilamos
-    modnn %>% compile(loss = "binary_crossentropy", 
-                    optimizer = optimizer_adam(), 
-                    metrics = c("accuracy")
+
+    # La compilamos
+    modnn %>% compile(
+      loss = "binary_crossentropy",
+      optimizer = optimizer_adam(),
+      metrics = c("accuracy")
     )
 
     # Entrenamos la red con el conjunto de entrenamiento
-    modnn %>% fit(x_train, y_train, epochs = v[i,5], verbose = 0)
-    
-    
-    #Creamos las variables de entrada y salida para el conjunto de test
+    modnn %>% fit(x_train, y_train, epochs = v[i, 5], verbose = 0)
+
+
+    # Creamos las variables de entrada y salida para el conjunto de test
     x_test <- as.matrix(sapply(folds[[k]][, -ncol(folds[[k]])], as.numeric))
     y_test <- as.numeric(folds[[k]]$Class == "Keylogger")
-    
-    #Predecimos la probabilidad de que la variable de salida sea "Keylogger"
+
+    # Predecimos la probabilidad de que la variable de salida sea "Keylogger"
     yhat.modnn <- predict(modnn, x_test)
     y_pred_class <- ifelse(yhat.modnn[, 1] > 0.5, 1, 0)
 
     # Guardamos la accuracy obtenida comparando las predicciones y los outputs reales del pliegue k
-    #f1.score.fold[k] <- F1_Score(y_pred = y_pred_class, y_true = y_test, positive = "1")
+    # f1.score.fold[k] <- F1_Score(y_pred = y_pred_class, y_true = y_test, positive = "1")
     accuracy.fold[k] <- Accuracy(y_pred = y_pred_class, y_true = y_test)
   }
 
   # Hacemos la media de los accuracy de todos los pliegues
-  #mean_f1.score_fold <- mean(f1.score.fold)
+  # mean_f1.score_fold <- mean(f1.score.fold)
   mean_accuracy_fold <- mean(accuracy.fold)
 
-  
-  #sd_f1.score_fold <- sd(f1.score.fold)/sqrt(length(folds))
-  sd_accuracy_fold <- sd(accuracy.fold)/sqrt(length(folds))
+
+  # sd_f1.score_fold <- sd(f1.score.fold)/sqrt(length(folds))
+  sd_accuracy_fold <- sd(accuracy.fold) / sqrt(length(folds))
   c(mean_accuracy_fold, sd_accuracy_fold)
 }
 
@@ -157,32 +159,118 @@ stopCluster(cl)
 
 
 ```{r}
-
 mean_accuracy_sd
 
 
 
-plot(mean_accuracy_sd[,1]/max(mean_accuracy_sd[,1]), main="Accuracy relativo")
+plot(mean_accuracy_sd[, 1] / max(mean_accuracy_sd[, 1]), main = "Accuracy relativo")
 
-#plot(mean_accuracy_sd[,3]/max(mean_accuracy_sd[,3]),main="Accuracy relativo")
-
-
-plot(mean_accuracy_sd[,1], main="Accuracy absoluto")
-
-#plot(mean_accuracy_sd[,3],main="Accuracy absoluto")
+# plot(mean_accuracy_sd[,3]/max(mean_accuracy_sd[,3]),main="Accuracy relativo")
 
 
+plot(mean_accuracy_sd[, 1], main = "Accuracy absoluto")
+
+# plot(mean_accuracy_sd[,3],main="Accuracy absoluto")
 ```
 
 Pasamos el tiempo de segundos a horas, minutos y segundos
 ```{r}
-
-horas <- as.integer(train_time %/% 3600)      
-resto <- as.integer(train_time %% 3600)        
-minutos <- as.integer(resto %/% 60)            
-segundos_finales <- as.integer(resto %% 60)        
+horas <- as.integer(train_time %/% 3600)
+resto <- as.integer(train_time %% 3600)
+minutos <- as.integer(resto %/% 60)
+segundos_finales <- as.integer(resto %% 60)
 
 resultado <- sprintf("El entrenamiento ha tardado %d horas, %d minutos y %d segundos", horas, minutos, segundos_finales)
 print(resultado)
+```
 
+
+
+```{r}
+library(doParallel)
+
+# Set up parallel backend to use multiple processors
+cl <- makeCluster(detectCores() - 1) # Leave one core free
+registerDoParallel(cl)
+
+# Definimos los valores de mtry, ntree y nodesize que vamos a probar
+values.nneurons1 <- c(2**4, 2**5, 2**6)
+values.nneurons2 <- c(0, 2**4, 2**5, 2**6)
+values.epochs <- c(50, 100, 150, 200)
+
+v <- expand.grid(values.nneurons1, values.nneurons2, values.epochs)
+colnames(v) <- c("Units Layer 1", "Units Layer 2", "Epocas")
+
+f1.score.fold <- rep(0, length(folds))
+accuracy.fold <- rep(0, length(folds))
+
+inicio <- Sys.time()
+
+# Entrenamos el modelo de bagging en paralelo
+mean_accuracy_sd <- foreach(i = 1:nrow(v), .combine = rbind, .packages = c("keras", "MLmetrics")) %dopar% {
+  test_fold <- rep(0, length(folds))
+
+  # Creamos la red neuronal con los parámetros de los vectores
+  if (v[i, 2] == 0) {
+    modnn <- keras_model_sequential() %>%
+      layer_dense(units = v[i, 1], activation = "relu", input_shape = ncol(x_train)) %>%
+      layer_dropout(rate = 0.5) %>%
+      layer_dense(units = 1, activation = "sigmoid")
+  } else {
+    modnn <- keras_model_sequential() %>%
+      layer_dense(units = v[i, 1], activation = "relu", input_shape = ncol(x_train)) %>%
+      layer_dropout(rate = 0.5) %>%
+      layer_dense(units = v[i, 2], activation = "relu") %>%
+      layer_dropout(rate = 0.5) %>%
+      layer_dense(units = 1, activation = "sigmoid")
+  }
+
+  # Compilamos la red neuronal
+  modnn %>% compile(
+    loss = "binary_crossentropy",
+    optimizer = optimizer_adam(),
+    metrics = c("accuracy")
+  )
+
+  for (k in seq(1:length(folds))) {
+    # Juntamos todos los folds menos el k
+    data <- do.call(rbind, folds[-k])
+
+    # Definimos las variables de entrada y de salida del conjunto de entrenamiento
+    x_train <- as.matrix(sapply(data[, -ncol(data)], as.numeric))
+    y_train <- as.numeric(data$Class == "Keylogger")
+
+    # Entrenamos la red con el conjunto de entrenamiento
+    modnn %>% fit(x_train, y_train, epochs = v[i, 3], verbose = 0)
+
+
+    # Creamos las variables de entrada y salida para el conjunto de test
+    x_test <- as.matrix(sapply(folds[[k]][, -ncol(folds[[k]])], as.numeric))
+    y_test <- as.numeric(folds[[k]]$Class == "Keylogger")
+
+    # Predecimos la probabilidad de que la variable de salida sea "Keylogger"
+    yhat.modnn <- predict(modnn, x_test)
+    y_pred_class <- ifelse(yhat.modnn[, 1] > 0.5, 1, 0)
+
+    # Guardamos la accuracy obtenida comparando las predicciones y los outputs reales del pliegue k
+    # f1.score.fold[k] <- F1_Score(y_pred = y_pred_class, y_true = y_test, positive = "1")
+    accuracy.fold[k] <- Accuracy(y_pred = y_pred_class, y_true = y_test)
+  }
+
+  # Hacemos la media de los accuracy de todos los pliegues
+  # mean_f1.score_fold <- mean(f1.score.fold)
+  mean_accuracy_fold <- mean(accuracy.fold)
+
+
+  # sd_f1.score_fold <- sd(f1.score.fold)/sqrt(length(folds))
+  sd_accuracy_fold <- sd(accuracy.fold) / sqrt(length(folds))
+  c(mean_accuracy_fold, sd_accuracy_fold)
+}
+
+final <- Sys.time()
+
+train_time <- as.numeric(difftime(final, inicio, units = "secs"))
+
+# Stop the cluster
+stopCluster(cl)
 ```
