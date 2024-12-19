@@ -47,6 +47,7 @@ mydf$Class <- relevel(mydf$Class, ref = "Benign")
 
 #Nos quedamos con las columnas numéricas
 mydf.numeric <- mydf[,which(sapply(mydf, is.numeric))]
+mydf.numeric <- as.data.frame(scale(mydf.numeric))
 
 # Añadimos la columna a predecir
 mydf.numeric$Class <- mydf$Class
@@ -80,6 +81,7 @@ folds <- split(train, folds_indexes)
 ```{r}
 library(doParallel)
 
+
 # Set up parallel backend to use multiple processors
 cl <- makeCluster(detectCores() - 1) # Leave one core free
 registerDoParallel(cl)
@@ -106,19 +108,19 @@ mean_accuracy_sd <- foreach(i = 1:nrow(v), .combine = rbind, .packages = c("kera
     modnn <- keras_model_sequential() %>%
       layer_dense(units = v[i, 1], activation = "relu", input_shape = c(ncol(mydf.numeric)-1)) %>%
       layer_dropout(rate = 0.5) %>%
-      layer_dense(units = 1, activation = "sigmoid")
+      layer_dense(units = 2, activation = "softmax")
   } else {
     modnn <- keras_model_sequential() %>%
       layer_dense(units = v[i, 1], activation = "relu", input_shape = c(ncol(mydf.numeric)-1)) %>%
       layer_dropout(rate = 0.5) %>%
       layer_dense(units = v[i, 2], activation = "relu") %>%
       layer_dropout(rate = 0.5) %>%
-      layer_dense(units = 1, activation = "sigmoid")
+      layer_dense(units = 2, activation = "softmax")
   }
 
   # Compilamos la red neuronal
   modnn %>% compile(
-    loss = "binary_crossentropy",
+    loss = "categorical_crossentropy",
     optimizer = optimizer_adam(),
     metrics = c("accuracy")
   )
@@ -131,9 +133,9 @@ mean_accuracy_sd <- foreach(i = 1:nrow(v), .combine = rbind, .packages = c("kera
     x_train <- as.matrix(data[, -ncol(data)])
     y_train <- as.numeric(data$Class == "Keylogger")
 
+    y_train <- to_categorical(y_train, 2)
     # Entrenamos la red con el conjunto de entrenamiento
-    modnn %>% fit(x_train, y_train, epochs = v[i, 3], verbose = 0)
-
+    modnn %>% fit(x_train, y_train, epochs = v[i, 3], verbose = 1)
 
     # Creamos las variables de entrada y salida para el conjunto de test
     x_test <- as.matrix(folds[[k]][, -ncol(folds[[k]])])
@@ -141,11 +143,12 @@ mean_accuracy_sd <- foreach(i = 1:nrow(v), .combine = rbind, .packages = c("kera
 
     # Predecimos la probabilidad de que la variable de salida sea "Keylogger"
     yhat.modnn <- predict(modnn, x_test)
-    y_pred_class <- ifelse(yhat.modnn[, 1] > 0.5, 1, 0)
+    y_pred_class <- ifelse(yhat.modnn[, 1] > 0.5, 0, 1)
 
     # Guardamos la accuracy obtenida comparando las predicciones y los outputs reales del pliegue k
     # f1.score.fold[k] <- F1_Score(y_pred = y_pred_class, y_true = y_test, positive = "1")
     accuracy.fold[k] <- Accuracy(y_pred = y_pred_class, y_true = y_test)
+    F1_Score(y_pred = y_pred_class, y_true = y_test, positive = "1")
   }
 
   # Hacemos la media de los accuracy de todos los pliegues
