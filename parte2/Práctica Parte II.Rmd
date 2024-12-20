@@ -8,16 +8,26 @@ output:
     highlight: kate
     number_sections: yes
     theme: spacelab
-    toc: yes
-    toc_float: yes
 ---
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-Lo primero es importar las librerías necesarias y configurar el directorio de trabajo. También se seleccionará una misma semilla aleatoria para todo el cuaderno.
-```{r}
+**Introducción**
+
+En este trabajo se va a realizar un análisis de un dataset que contiene información sobre conexiones de red. El objetivo es identificar si una conexión es benigna o maligna, es decir, si es un keylogger o no. Para ello, se utilizarán distintos algoritmos de machine learning y se compararán los resultados obtenidos. El cuaderno se dividirá en las siguientes secciones:
+
+1. [Exploración del dataset y agrupación de variables](#agrupacion)
+2. [Preprocesamiento de los datos](#preprocesamiento)
+3. [Sampleo de los datos](#sampleo)
+4. [Análisis PCA](#pca)
+5. [Regresión logística](#regresion-logistica)
+6. [Bagging](#bagging)
+7. [Red Neuronal](#red-neuronal)
+8. [Análisis de resultados](#analisis-resultados)
+
+Antes de empezar con el trabajo tenemos que cargar las librerías necesarias, configurar el directorio de trabajo y seleccionar una semilla aleatoria para todo el cuaderno.
+```{r, results = "hide", message = FALSE, warning = FALSE}
 # Seleccioamos el directorio actual como directorio de trabajo
 # Si estamos compilando no lo hacemos para que no de error la compilación
 if (interactive()) {
@@ -34,68 +44,53 @@ library(magrittr)
 set.seed(12345)
 ```
 
-# 1. Agrupar variables.
 
-**_Enunciado:_ Agrupar todas las variables del conjunto por temática, describiendo lo que significa cada uno de los grupos de características que has identificado. Se pide básicamente, terminar el trabajo empezado arriba cuando se han descrito las características relativas al flujo, a los paquetes del flujo, y tiempo transcurrido entre paquete y paquete. Identifica y describe las ya identificadas arriba junto con las que faltan. Dentro de las características de cada conexión, para la mayoría de categorías de características, se distingue entre características forward y backward. Explicar en que se diferencian unas de otras y mencionar las referencias documentales que se han usado para responder. Desde el punto de vista del análisis de datos, ¿es relevante diferencia entre características forward y backward? ¿Por qué?**
+Para que el cuaderno se pueda compilar rápidamente, vamos a cargar previamente los resultados que nos hagan falta. De esta forma, podremos dejar celdas sin ejecutar pero mostrando el código. 
 
-# 2. Estrategia de trabajo.
+# Exploración del dataset y agrupación de variables. {#agrupacion}
+En esta sección analizaremos las variables del dataset y las agruparemos por temáticas. Se describirá el significado de cada grupo de características identificado.
 
-**Enunciado:**
-Plantear y ejecutar una estrategia que te permita trabajar con el conjunto de datos de manera holgada si tener que usar necesariamente los 90K ejemplos en memoria.
-
-Para poder trabajar con el datastet de manera holgada, es conveniente crear un subconjunto de datos que sea manejable. Para ello, se puede seleccionar un número de filas aleatorio que sea manejable y que permita realizar el análisis de manera eficiente. Este subconjunto de datos deberá tener la misma distribución de casos positivos y negativos que el dataset original para no desbalancear el modelo. Para conseguir esto basta con escoger una muestra aleatoria de, por ejemplo, un 10% de las filas del dataset original con una probabilidad uniforme y sin reemplazo.
-
-Una forma de hacerlo puede ser con el código proporcionado:
-```bash
-awk 'BEGIN {srand()} NR==1 {print > "sampled.csv"; next} rand() <= 0.1 {print >> "sampled.csv"}' Keylogger_Detection.csv
-```
-
-Otra forma, aunque más lenta, sería cargar todo el dataset con R y seleccionar las filas aleatorias con la función `sample()`. A continuación se muestra un ejemplo de cómo hacerlo con R:
-```{r, eval=FALSE}
-# Cargamos el dataset
+```{r}
+# Leemos el dataset
 mydf <- read.csv("Keylogger_Detection.csv", header = TRUE, sep = ",")
 
-# Seleccionamos un 10% de las filas
-sampled <- mydf[sample(nrow(mydf), nrow(mydf) * 0.1), ]
-
-# Guardamos el subconjunto de datos
-write.csv(sampled, "sampled_2.csv", row.names = FALSE)
+# Mostramos las variables del dataset
+str(mydf)
 ```
 
-Antes de realizar el sampleo del dataset, es necesario preprocesar los datos. De esta forma, guardaremos los datos listos para trabajar. En este preprocesamiento, se eliminarán las columnas que no aportan información relevante, se eliminarán las filas con valores nulos, se eliminarán las filas duplicadas, se convertirán las variables a un formato adecuado, y se eliminarán las variables constantes. Una vez realizado este preprocesamiento, se procederá a realizar el sampleo del dataset.
+_Aquí debemos agrupar las variables por grupos._
 
+# Preprocesamiento de los datos. {#preprocesamiento}
+Antes de empezar con los análisis se deben preprocesar los datos. En este sección se explicarán los preprocesamientos realizados y sus razonamientos.
 
-## 2.1. Preprocesamiento del dataset
-Cargamos los datos del dataset.
+Lo primero de todo es visualzar el dataset completo con todas sus variables:
 ```{r}
-# Cargamos los datos
-mydf <- read.csv("Keylogger_Detection.csv", header = TRUE, sep = ",")
+# Mostramos el dataset completo
+dfSummary(mydf)
 ```
 
-Vemos el tipo de variables que hay dentro del dataset para comprobar cuáles no aportan información relevante.
+Ahora vamos a eliminar del dataset las variables que no aportan información relevante para el análisis.
 ```{r}
-# Realizamos un resumen del DataFrame
-print(dfSummary(mydf), method = "render")
+# Guardamos una copia del dataset original para comparar posteriormente
+mydf.original <- mydf
 
-# Eliminamos las variables que no aportan información relevante
+# Seleccionamos los predictores que no aportan información relevante
 vars.to.remove <- c("X", "Flow.ID", "Timestamp", "Source.IP", "Destination.IP", "Source.Port", "Destination.Port")
+
+# Eliminamos los predictores seleccionados
 mydf <- mydf[, !names(mydf) %in% vars.to.remove]
 ```
 
-Se pueden ver algunas variables que no aportan información relevante, como "X", "Flow.ID", "Timestamp", "Source.IP", "Destination.IP", "Source.Port" y "Destination.Port".
+La explicación de por qué hemos eliminado cada variable es la siguiente:
 
 - "X" es un índice que no aporta información relevante.
-  
 - "Flow.ID" es un identificador del flujo, por lo que no es una característica como tal.
-  
 - "Timestamp" es un instante temporal, no es una característica del flujo y por tanto no aporta información relevante.
-
 - "Source.IP" y "Destination.IP" son identificadores de los dispositivos fuente y destino, respectivamente, y no son características del flujo. No aportan información al análisis. Además, no pueden interpretarse como variables ni numéricas ni categóricas (ya que tendrían demasiados valores únicos), y no se puede realizar un análisis siendo variables de tipo character.
-
 - "Source.Port" y "Destination.Port" son los puertos de origen y destino, respectivamente, y no son características del flujo. No aportan información al análisis. No pueden interpretarse como variables categóricas (ya que tendrían demasiados valores únicos), y no dan información real de tipo numérico.
 
 
-Una vez hemos eliminado las variables que no aportan información relevante, pasamos a eliminar las filas con valores nulos. Antes de nada, hay que comprobar que no vayamos a eliminar una gran cantidad de filas.
+Una vez eliminamos las variables innecesarias, vamos a comprobar los valores nulos del dataset y ver cómo los tratamos. Empecemos viendo la cantidad de filas con nulos.
 ```{r}
 # Buscamos las filas con valores nulos
 na.coordinates <- which(is.na(mydf), arr.ind = TRUE)
@@ -108,27 +103,27 @@ na.prows <- length(na.rows) / nrow(mydf) * 100
 paste("El porcentaje de filas con nulos es: ", na.prows, "%", sep = "")
 ```
 
-Vemos que el porcentaje de filas a eliminar es muy bajo, así que eliminamos las filas con valores NA del DataFrame.
+Vemos que el dataset contiene muy poca cantidad de valores nulos. Por lo tanto, eliminamos las filas con valores NA.
 ```{r}
 # Eliminamos las filas con valores nulos
 mydf <- na.omit(mydf)
 ```
 
 Ahora, eliminamos las filas duplicadas.
-```{r}
+```{r, eval = FALSE}
 # Eliminamos las filas duplicadas
 mydf <- mydf[!duplicated(mydf), ]
 ```
 
 Vamos a eliminar las columnas con desviación estándar cero. Para ello, psaremos a numérico todas las variables que no sean claramente carácteres.
-```{r}
+```{r, eval = FALSE}
 # Pasamos a numérico las variables que les corresponde
 mydf$Packet.Length.Std <- as.numeric(mydf$Packet.Length.Std)
 ```
 
 Al analizar las variables vemos que hay una con una situación particular. Esta es "CWE.Flag.Count", que tiene valores "0" y "0.0". Además, los valores "0.0" no son pocos, suponen el 6% del total, más que los valores "1" de otros Flags como "FIN.Flag.Count", que solo el 1.7% son valores 1. Esto puede deberse a que por un error los valores 0.0 deberían ser 1. Si fuera un error de tipografía que pasará algunos valores 0 a 0.0 no habría tantos casos. Por lo tanto, se convertirán los valores "0.0" a "1" para que siga el formato común con los otros Flags.
 
-```{r}
+```{r, eval = FALSE}
 # Convertimos los "0.0" a 1
 mydf$CWE.Flag.Count <- ifelse(mydf$CWE.Flag.Count == "0.0", "1", mydf$CWE.Flag.Count)
 
@@ -145,9 +140,8 @@ constant_cols <- which(sapply(mydf[, num_cols], sd) == 0)
 mydf <- mydf[, -constant_cols]
 ```
 
-
 Finalmente, volvemos a hacer una revisión de las variables del dataset y asignamos los tipos correspondientes a cada variable.
-```{r}
+```{r, eval = FALSE}
 # Pasamos los que tienen valores 0, 1 a factor.
 mydf$Fwd.PSH.Flags <- as.factor(mydf$Fwd.PSH.Flags)
 mydf$FIN.Flag.Count <- as.factor(mydf$FIN.Flag.Count)
@@ -159,37 +153,66 @@ mydf$CWE.Flag.Count <- as.factor(mydf$CWE.Flag.Count)
 mydf$Class <- as.factor(mydf$Class)
 ```
 
-
-## 2.2. Sampleo del dataset
-Ahora que tenemos el dataset preprocesado vamos a guardar el dataset en un fichero .csv para poder trabajar con él en el futuro. Además, crearemos un dataset con un 10% de las filas del dataset original para poder trabajar con él de manera holgada.
-```{r}
-# Guardamos el dataset preprocesado
-write.csv(mydf, "preprocessed.csv", row.names = FALSE)
-
-# Seleccionamos un 10% de las filas
-sampled <- mydf[sample(nrow(mydf), nrow(mydf) * 0.1), ]
-
-# Guardamos el subconjunto de datos
-write.csv(sampled, "sampled_preprocesed.csv", row.names = FALSE)
+Guardamos el dataset procesado.
+```{r, eval = FALSE}
+# Guardamos el dataset procesado
+write.csv(mydf, "Keylogger_Detection_processed.csv", row.names = FALSE)
 ```
 
-Comprobamos que el dataset sampleado tiene la misma proporción de casos positivos y negativos que el dataset original.
+Para ver que el dataset procesado sirve para trabajar, vamos a comparar el porcentaje de valores positivos y negativos en los dos dasatet.
 ```{r}
-# Comprobamos la proporción de casos positivos y negativos en el dataset original
-prop.table(table(mydf$Class)) * 100
+# Cargamos el dataset procesado
+mydf <- read.csv("Keylogger_Detection_processed.csv", header = TRUE, sep = ",")
 
-# Comprobamos la proporción de casos positivos y negativos en el dataset sampleado
-prop.table(table(sampled$Class)) * 100
+# Pasamos las variables correspondientes a factor
+mydf$Protocol <- as.factor(mydf$Protocol)
+mydf$Fwd.PSH.Flags <- as.factor(mydf$Fwd.PSH.Flags)
+mydf$FIN.Flag.Count <- as.factor(mydf$FIN.Flag.Count)
+mydf$SYN.Flag.Count <- as.factor(mydf$SYN.Flag.Count)
+mydf$PSH.Flag.Count <- as.factor(mydf$PSH.Flag.Count)
+mydf$ACK.Flag.Count <- as.factor(mydf$ACK.Flag.Count)
+mydf$URG.Flag.Count <- as.factor(mydf$URG.Flag.Count)
+mydf$CWE.Flag.Count <- as.factor(mydf$CWE.Flag.Count)
+mydf$Class <- as.factor(mydf$Class)
+
+# Porcentaje de valores positivos y negativos en el dataset original
+table(mydf.original$Class) / nrow(mydf.original) * 100
+
+# Porcentaje de valores positivos y negativos en el dataset procesado
+table(mydf$Class) / nrow(mydf) * 100
 ```
 
-Vemos que la proporción de casos positivos y negativos en el dataset sampleado es prácticamente la misma que en el dataset original. Por tanto, el dataset sampleado es válido para trabajar con él.
-# 3. Elabora un análisis no supervisado (PCA) de las conexiones y explica lo que ves. ¿Cómo dirías que va a ser el problema de la elaboración de un modelo de clasificación que identifique conexiones de keystrokes en términos de dificultad? Razona la respuesta.
+Vemos que la proporción de casos positivos y negativos no cambia. Por lo tanto, el dataset procesado sirve para trabajar. 
 
-## 3.1. Lectura y preprocesado de los datos
-Cuando cargamos el dataset preprocesado, hay que volver a transformar las variables numéricas a categóricas cuando corresponda.
+# Sampleo de los datos. {#sampleo}
+Para poder trabajar con holgura a lo largo de la práctica vamos a coger una muestra del dataset original del 20%. De esta forma, los tiempos de ejecución serán menores y podremos trabajar más rápido. Para poder trabajar con el dataset sampleado, tendremos que conseguir que la proporción de casos positivos y negativos sea la misma que en el dataset original. Para ello, se cogerán filas aleatoriamente sin reemplazo y con una probabilidad uniforme. 
+
+```{r}
+# Sampleamos el dataset
+mydf.sample <- mydf[sample(nrow(mydf), nrow(mydf) * 0.2), ]
+
+# Porcentaje de valores positivos y negativos en el dataset sampleado
+table(mydf.sample$Class) / nrow(mydf.sample) * 100
+
+# Porcentaje de valores positivos y negativos en el dataset original
+table(mydf.original$Class) / nrow(mydf.original) * 100
+```
+
+Vemos que la proporción de casos positivos y negativos en el dataset sampleado es casi idéntica a la del dataset original. Por lo tanto, el dataset sampleado sirve para trabajar. Vamos a guardar el dataset sampleado.
+```{r, eval = FALSE}
+# Guardamos el dataset sampleado
+write.csv(mydf.sample, "sampled.csv", row.names = FALSE)
+```
+
+
+# Análisis PCA. {#pca}
+
+## Carga del dataset sampleado
+
+Primero de todo hay que volver a cargar el dataset sampleado. Además, se deben volver a pasar a factor las variables que lo requieran.
 ```{r}
 # Leemos el dataset preprocesado
-mydf <- read.csv("sampled_preprocesed.csv", header = TRUE, sep = ",")
+mydf <- read.csv("sampled.csv", header = TRUE, sep = ",")
 
 # Pasamos las variables correspondientes a factor
 mydf$Protocol <- as.factor(mydf$Protocol)
@@ -206,14 +229,15 @@ mydf$Class <- as.factor(mydf$Class)
 mydf$Class <- relevel(mydf$Class, ref = "Benign")
 ```
 
-## 3.2. Análisis PCA
+## Análisis del PCA
+
 Vamos a realizar el PCA con el conjunto preprocesado. Primero, seleccionamos las colunas numéricas.
 ```{r}
 # Seleccionamos las columnas numéricas
 mydf.numeric <- mydf[, sapply(mydf, is.numeric)]
 ```
 
-Una vez tenemos las columnas numéricas seleccionadas, realizamos el PCA. No hace falta estandarizar las variales previamente ya que el PCA lo hace por nosotros con el parámetro `r scale = TRUE`.
+Una vez tenemos las columnas numéricas seleccionadas, realizamos el PCA. No hace falta estandarizar las variales previamente ya que el PCA lo hace por nosotros con el parámetro `scale = TRUE`.
 ```{r}
 # Realizamos PCA
 pr.out <- prcomp(mydf.numeric, scale = TRUE)
@@ -228,34 +252,35 @@ summary(pr.out)
 pr.out.cumvar <- cumsum(pr.out$sdev^2 / sum(pr.out$sdev^2))
 plot(
   pr.out.cumvar,
-  xlab = "Principal Component",
-  ylab = "Cumulative Proportion of Variance Explained",
+  xlab = "Componente principal",
+  ylab = "Varianza acumulada",
+  main = "Varianza acumulada explicada por las componentes principales",
   type = "b"
 )
+abline(h = 0.8, col = "red")
 
 # Seleccionamos las componentes principales que expliquen al menos el 80% de la varianza
 ncomp <- which(pr.out.cumvar > 0.8)[1]
 ncomp
 ```
 
-Vemos que necesitamos las 10 primeras componentes principales para explicar el 80% de la varianza. Solo con las 2 primeras componentes principales explicamos tan solo el 37.5% de la varianza, una cifra muy baja. Por tanto, necesitamos muchas componentes principales para explicar la varianza de los datos.
+Vemos que necesitamos las 11 primeras componentes principales para explicar el 80% de la varianza. Solo con las 2 primeras componentes principales explicamos tan solo el 35.73% de la varianza, una cifra muy baja. Por tanto, necesitamos muchas componentes principales para explicar la varianza de los datos.
 
 Vamos a realizar un biplot para ver cómo se relacionan las variables con las dos primeras componentes principales.
-```{r}
+```{r, eval = FALSE}
 # Realizamos un biplot solo con los vectores, no con los datos
 png("biplot.png")
 biplot(pr.out, scale = 0, xlim = c(-15, 15), ylim = c(-15, 15))
 dev.off()
 ```
 
-Como el dataset tiene demasiadas varaibles, el biplot se guarda en un .png para poder consultarse cuando se desee. Se puede ver en esta imagen que tenemos demasiados predictores y demasiados valores, no se puede sacar nada en claro. Además, como PC1 y PC2 explican solo el 37.5% de la varianza el biplot tampoco sería representativo.
+Como el dataset tiene demasiadas varaibles, el biplot se guarda en un .png para poder consultarse cuando se desee [biplot.png](biplot.png). Se puede ver en esta imagen que tenemos demasiados predictores y demasiados valores, no se puede sacar nada en claro. Además, como PC1 y PC2 explican solo el 35.73% de la varianza el biplot tampoco sería representativo.
 
-Por todo esto, podemos ver que la elaboración de un modelo de clasificación que identifique conexiones de keystrokes va a ser un problema complicado. Tenemos muchos predictores y ver las relaciones entre ellos no va a ser una tarea sencilla. Si intentásemos reducir la dimensionalidad del problea con PCA como mucho podríamos reducir a 10 dimensiones, lo cual sigue siendo una gan cantidad de variables.
+Por todo esto, podemos ver que la elaboración de un modelo de clasificación que identifique conexiones de keystrokes va a ser un problema complicado. Tenemos muchos predictores y ver las relaciones entre ellos no va a ser una tarea sencilla. Si intentásemos reducir la dimensionalidad del problea con PCA como mucho podríamos reducir a 11 dimensiones, lo cual sigue siendo una gan cantidad de variables.
 
 
-# 4. ¿Es posible identificar si la conexión es benigna o maligna mediante un modelo de regresión? ¿Qué tipo de modelo de regresión habría que usar en este caso? ¿Cuáles son las características relevantes? ¿Cómo se comporta el modelo?
-
-Para poder identificar si la conexión es benigna o maligna mediante un modelo de regresión, usaremos un modelo de regresión logística. Realizaremos unas predicciones con el resultado del modelo y veremos cómo funciona para el dataset. No usaremos conjunto de prueba ni de test, ya que simplemente queremos ver cómo de eficaz es con nuestro conjunto de datos.
+# Regresión logística. {#regresion-logistica}
+Vamos a intentar predecir si una conexión es benigna o maligna mediante un modelo de regresión logística. Realizaremos unas predicciones con el resultado del modelo y veremos cómo funciona para el dataset. No usaremos conjunto de prueba ni de test, ya que simplemente queremos ver cómo de eficaz es con nuestro conjunto de datos.
 
 ```{r}
 # Creamos el modelo de regresión logística
@@ -296,169 +321,21 @@ addmargins(round(prop.table(logr.table, 1) * 100, 1), 2)
 ```
 
 Analizando la tabla de confusión vemos que el modelo no es capaz de predecir correctamente si una conexión es benigna o maligna.
-- De las conexiones que son benignas, el modelo solo es capaz de predecir correctamente el 2.9%. 
-- De las conexiones que son keylogger, el modelo predice correctamente el 78.7%.
-- De las conexiones que se han predicho como benignas, solo el 16.2% eran realmente benignas, dejando una tasa de falso positivo del 83.8%.
-- De las conexiones que se han predicho como keylogger, solo el 36.4% eral realmente keylogger, dejando una tasa de falso negativo del 63.6%.
+
+- De las conexiones que son benignas, el modelo solo es capaz de predecir correctamente el 29.2%. 
+- De las conexiones que son keylogger, el modelo predice correctamente el 55.1%.
+- De las conexiones que se han predicho como benignas, solo el 48.5% eran realmente benignas, dejando una tasa de falso positivo del 51.5%.
+- De las conexiones que se han predicho como keylogger, solo el 65.0% eran realmente keylogger, dejando una tasa de falso negativo del 35.0%.
   
-Con este análisis podemos concluir que el modelo es nefasto prediciendo conexiones benignas. Además, aunque prediga la mayoría de las conexiones keylogger, tiene una gran tasa de falso positivo, por lo que no es un modelo fiable. Por tanto, no es posible identificar si la conexión es benigna o maligna mediante un modelo de regresión logística.
+Con este análisis podemos concluir que el modelo es nefasto prediciendo conexiones benignas. Además, tampoco es capaz de predecir correctamente las conexiones malignas, acertando en un 55.1% de las veces. Por tanto, el modelo de regresión logística no es adecuado para predecir si una conexión es benigna o maligna.
 
 
-# 5. Predicción con modelos de machine learning
-
-**- Explicar brevemente el tipo de modelo que genera el algoritmo, y cuál es la estrategia de dicho algoritmos para construir el modelo.**
-
-**- Indicar si el algoritmo en cuestión tiene algún requisito en cuanto a si se han de preprocesar los datos (e.g. escalado, imputación de valores nulos, etc.) y cómo.**
-
-**- Identificar y explicar cada uno de sus hiperparámetros**
-
-**- Detallar una estrategia para la generación del grid de valores para hiperparámetros a usar.**
-
-**- Ejecutar la estrategia, generar los modelos y seleccionar el mejor siguiendo la estrategia explicada arriba**
-
-**- En primer lugar dividimos los datos en un conjunto de train y otro de test. Para el conjunto de test se cogerán 10000 datos, el resto será de train.**
-
-
-## 5.1. Bagging
-```{r}
-# Definimos el conjunto de test
-test_indices <- sample(1:nrow(mydf), 10000)
-test <- mydf[test_indices, ]
-
-# Definimos el conjunto de train
-train_indices <- setdiff(1:nrow(mydf), test_indices)
-train <- mydf[train_indices, ]
-```
-
-Para llevar a cabo el proceso de validación cruzada, dividiremos el conjunto de train en n pliegues. El número elegido será n=5 pliegues.
-
-```{r}
-# Definimos el número de pliegues
-n <- 5
-
-# Generamos un vector de igual longitud que el numero de filas de train, asociando cada valor a un pliegue
-folds_indexes <- sample(rep(1:n, length.out = nrow(train)))
-
-# Obtenemos los pliegues aplicando la secuencia anterior a los datos de train
-folds <- split(train, folds_indexes)
-```
-
-Ahora que ya tenemos los pliegues creados, podemos empezar a usar los algoritmos de machine learning para predecir la variable Class. Los algortimos escogidos serán dos: Bagging y Red neuronal.
-
-# Bagging
-
-En este caso los hiperparámetros entre los cuales podemos elegir son dos: el número de variables consideradas en cada split de cada árbol (mtry) y el número de árboles que se crearán (ntree). Crearemos distintos vectores que contendrán dos componentes, siendo cada una un valor posible para su hiperparámetro correspondiente.
-
-Para determinar el rango de valores que podemos probar para mtry, podemos partir del valor usado por defecto en el algoritmo Random Forest para este hiperparámetro, sqrt(p), donde p es el número de predictores.
-
-```{r}
-# Vemos cuál es el valor que usa el algoritmo Random Forest por defecto, sqrt(p)
-m_rf <- sqrt(dim(train)[2])
-```
-
-Podemos tomar como referencia mtry=8.
-
-Lo que haremos será crear seis vectores
-```{r}
-length(folds)
-```
-
-```{r}
-v1 <- c(6, 100)
-
-v2 <- c(8, 150)
-
-v3 <- c(10, 200)
-
-
-v <- rbind(v1, v2, v3)
+# Bagging. {#bagging}
 
 
 
-test_fold <- rep(0, length(folds))
-
-mean_accuracy <- rep(0, dim(v)[1])
+# Red Neuronal. {#red-neuronal}
 
 
 
-
-for (i in 1:dim(v)[1]) {
-  for (k in seq(1:length(folds))) {
-    # Juntamos todos los folds menos el k
-    data <- do.call(rbind, folds[-k])
-
-    # Creamos el modelo de bagging
-    bag <- randomForest(Class ~ .,
-      data = data,
-      mtry = v[i, 1], ntree = v[i, 2], importance = TRUE
-    )
-
-    # Predecimos con el pliegue que hemos dejado fuera del entrenamiento
-    yhat.bag <- predict(bag, newdata = folds[[k]])
-
-    # Guardamos la accuracy obtenida comparando las predicciones y los outputs reales del pliegue k
-    test_fold[k] <- MLmetrics::Accuracy(yhat.bag, folds[[k]]$Class)
-  }
-
-  # Hacemos la media de los accuracy de todos los pliegues
-  mean_accuracy[i] <- mean(test_fold)
-}
-```
-
-
-```{r}
-for (i in v) {
-  print(i)
-}
-```
-
-```{r}
-mean_accuracy
-# Guardamos mean_accuracy en un archivo .csv
-results <- data.frame(mean_accuracy = mean_accuracy, mtry = v[, 1], ntree = v[, 2])
-
-write.csv(results, "results_bagging.csv", row.names = FALSE)
-```
-
-
-## 5.2. Red neuronal
-Vayamos ahora con el segundo algortimo. Ahora los hiperparámetros son el número de nodos de la capa oculta y el porcentaje de dropout para la regularización.
-
-```{r}
-v1 <- c(50, 0.2)
-
-v2 <- c(100, 0.5)
-
-v3 <- c(200, 0.8)
-
-v <- rbind(v1, v2, v3)
-
-test_fold <- rep(0, length(folds))
-
-mean_accuracy <- rep(0, dim(v)[1])
-
-
-
-for (i in 1:dim(v)[1]) {
-  for (k in seq(1:length(folds))) {
-    # Juntamos todos los folds menos el k
-    data <- do.call(rbind, folds[-k])
-
-    modnn <- keras_model_sequential() %>%
-      layer_dense(units = v[i, 1], activation = "sigmoid", input_shape = ncol(data)) %>%
-      layer_dropout(rate = v[i, 2]) %>%
-      layer_dense(units = 2, activation = "softmax")
-
-
-    # Predecimos con el pliegue que hemos dejado fuera del entrenamiento
-    yhat.modnn <- predict(modnn, newdata = folds[[k]])
-
-    # Guardamos la accuracy obtenida comparando las predicciones y los outputs reales del pliegue k
-    test_fold[k] <- MLmetrics::Accuracy(yhat.modnn, folds[[k]]$Class)
-  }
-
-  # Hacemos la media de los accuracy de todos los pliegues
-  mean_accuracy[i] <- mean(test_fold)
-}
-```
-
+# Análisis de resultados. {#analisis-resultados}
