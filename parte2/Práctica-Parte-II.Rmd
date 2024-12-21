@@ -39,6 +39,8 @@ library(summarytools)
 library(randomForest)
 library(keras)
 library(magrittr)
+library(doParallel)
+library(MLmetrics)
 
 # Seleccionamos la semilla aleatoria para todo el cuaderno
 set.seed(12345)
@@ -61,9 +63,9 @@ str(mydf)
 _Aquí debemos agrupar las variables por grupos._
 
 # Preprocesamiento de los datos. {#preprocesamiento}
-Antes de empezar con los análisis se deben preprocesar los datos. En este sección se explicarán los preprocesamientos realizados y sus razonamientos.
+Antes de empezar con los análisis se deben preprocesar los datos. En esta sección se explicarán los preprocesamientos realizados y sus razonamientos.
 
-Lo primero de todo es visualzar el dataset completo con todas sus variables:
+Lo primero de todo es visualizar el dataset completo con todas sus variables:
 ```{r}
 # Mostramos el dataset completo
 dfSummary(mydf)
@@ -86,7 +88,7 @@ La explicación de por qué hemos eliminado cada variable es la siguiente:
 - "X" es un índice que no aporta información relevante.
 - "Flow.ID" es un identificador del flujo, por lo que no es una característica como tal.
 - "Timestamp" es un instante temporal, no es una característica del flujo y por tanto no aporta información relevante.
-- "Source.IP" y "Destination.IP" son identificadores de los dispositivos fuente y destino, respectivamente, y no son características del flujo. No aportan información al análisis. Además, no pueden interpretarse como variables ni numéricas ni categóricas (ya que tendrían demasiados valores únicos), y no se pueden usar en un análisis siendo variables de tipo character.
+- "Source.IP" y "Destination.IP" son identificadores de los dispositivos fuente y destino, respectivamente, y no son características del flujo. No aportan información al análisis. Además, no pueden interpretarse como variables ni numéricas ni categóricas (ya que tendrían demasiados valores únicos), y no se puede realizar un análisis siendo variables de tipo character.
 - "Source.Port" y "Destination.Port" son los puertos de origen y destino, respectivamente, y no son características del flujo. No aportan información al análisis. No pueden interpretarse como variables categóricas (ya que tendrían demasiados valores únicos), y no dan información real de tipo numérico.
 
 
@@ -115,13 +117,13 @@ Ahora, eliminamos las filas duplicadas.
 mydf <- mydf[!duplicated(mydf), ]
 ```
 
-Vamos a eliminar las columnas con desviación estándar cero. Para ello, pasaremos a numérico todas las variables que no sean claramente caracteres.
+Vamos a eliminar las columnas con desviación estándar cero. Para ello, psaremos a numérico todas las variables que no sean claramente caracteres.
 ```{r, eval = FALSE}
 # Pasamos a numérico las variables que les corresponde
 mydf$Packet.Length.Std <- as.numeric(mydf$Packet.Length.Std)
 ```
 
-Al analizar las variables vemos que hay una con una situación particular. Esta es "CWE.Flag.Count", que tiene valores "0" y "0.0". Además, los valores "0.0" no son pocos, suponen el 6% del total, más que los valores "1" de otros Flags como "FIN.Flag.Count", donde solo el 1.7% son valores 1. Esto puede deberse a que, por un error, los valores 0.0 deberían ser 1. Si fuera un error de tipografía que pasara algunos valores 0 a 0.0, no habría tantos casos. Por lo tanto, se convertirán los valores "0.0" a "1" para que siga el formato común con los otros Flags.
+Al analizar las variables vemos que hay una con una situación particular. Se trata de "CWE.Flag.Count", que tiene valores "0" y "0.0". Además, los valores "0.0" no son pocos, suponen el 6% del total, más que los valores "1" de otros Flags como "FIN.Flag.Count", donde solo el 1.7% son valores 1. Esto puede deberse a que, por un error, los valores 0.0 deberían ser 1. Si fuera un error de tipografía que pasará algunos valores 0 a 0.0 no habría tantos casos. Por lo tanto, se convertirán los valores "0.0" a "1" para que sigan el formato común con los otros Flags.
 
 ```{r, eval = FALSE}
 # Convertimos los "0.0" a 1
@@ -237,13 +239,13 @@ Vamos a realizar el PCA con el conjunto preprocesado. Primero, seleccionamos las
 mydf.numeric <- mydf[, sapply(mydf, is.numeric)]
 ```
 
-Una vez tenemos las columnas numéricas seleccionadas, realizamos el PCA. No hace falta estandarizar las variales previamente ya que el PCA lo hace por nosotros con el parámetro `scale = TRUE`.
+Una vez tenemos las columnas numéricas seleccionadas, realizamos el PCA. No hace falta estandarizar las variables previamente ya que el PCA lo hace por nosotros con el parámetro `scale = TRUE`.
 ```{r}
 # Realizamos PCA
 pr.out <- prcomp(mydf.numeric, scale = TRUE)
 ```
 
-Vamos a realizar un análisis del PCA para ver qué información nos aporta. Para ello, vamos a ver primero la varianza acumulada, con el fin de determinar cuáles son las componentes principales más importantes.
+Vamos a realizar un análisis del PCA para ver qué información nos aporta. Para ello, primero vamos a ver la varianza acumulada, para determinar cuáles son las componentes principales más importantes.
 ```{r}
 # Vemos la varianza explicada
 summary(pr.out)
@@ -274,9 +276,9 @@ biplot(pr.out, scale = 0, xlim = c(-15, 15), ylim = c(-15, 15))
 dev.off()
 ```
 
-Como el dataset tiene demasiadas varaibles, el biplot se guarda en un .png para poder consultarse cuando se desee [biplot.png](biplot.png). Se puede ver en esta imagen que tenemos demasiados predictores y demasiados valores, no se puede sacar nada en claro. Además, como PC1 y PC2 explican solo el 35.73% de la varianza el biplot tampoco sería representativo.
+Como el dataset tiene demasiadas variables, el biplot se guarda en un .png para poder consultarse cuando se desee [biplot.png](biplot.png). Se puede ver en esta imagen que tenemos demasiados predictores y demasiados valores, no se puede sacar nada en claro. Además, como PC1 y PC2 explican solo el 35.73% de la varianza el biplot tampoco sería representativo.
 
-Por todo esto, podemos ver que la elaboración de un modelo de clasificación que identifique conexiones de keystrokes va a ser un problema complicado. Tenemos muchos predictores y ver las relaciones entre ellos no va a ser una tarea sencilla. Si intentásemos reducir la dimensionalidad del problema con PCA, como mucho podríamos reducir a 11 dimensiones, lo cual sigue siendo una gran cantidad de variables.
+Por todo esto, podemos ver que la elaboración de un modelo de clasificación que identifique conexiones de keystrokes va a ser un problema complicado. Tenemos muchos predictores y ver las relaciones entre ellos no va a ser una tarea sencilla. Si intentásemos reducir la dimensionalidad del problea con PCA como mucho podríamos reducir a 11 dimensiones, lo cual sigue siendo una gan cantidad de variables.
 
 
 # Regresión logística. {#regresion-logistica}
@@ -297,9 +299,9 @@ alias.matrix <- round(alias.matrix)
 alias.matrix
 ```
 
-Vemos que hay variables que han generado aliasing en el modelo, lo que significa que están perfectamente correlacionadas con otras variables (variables de filas con variables de columnas). El modelo de regresión logística directamente no tendrá en cuenta estas variables. 
+Vemos que hay variables que han generado aliasing en el modelo, lo que significa que están perfectamente correlacionadas con otras variables (variables de filas con variables de columnas). El modelo de regesión logística directamente no tendrá en cuenta estas variables. 
 
-Una vez tenemos el modelo creado, realizamos unas predicciones. Con estas predicciones se harán unas tablas de confusión para ver cómo se comporta el modelo.
+Una vez tenemos el modelo creado, realizamos unas preddicciones. Con estas predicciones se harán unas tablas de confusión para ver cómo se comporta el modelo.
 ```{r}
 # Realizamos las predicciones
 logr.probs <- predict(logr, type = "response")
@@ -330,23 +332,173 @@ Analizando la tabla de confusión vemos que el modelo no es capaz de predecir co
 Con este análisis podemos concluir que el modelo es nefasto prediciendo conexiones benignas. Además, tampoco es capaz de predecir correctamente las conexiones malignas, acertando en un 55.1% de las veces. Por tanto, el modelo de regresión logística no es adecuado para predecir si una conexión es benigna o maligna.
 
 
+# Validación cruzada. {#validacion-cruzada}
+A la hora de crear un modelo de machine learning, es importante seleccionar correctamente los hiperparámetros del mismo. Para probar combinaciones de diferentes hiperparámetros, crearemos vectores de hiperparámetros $v_i$, de forma que cada vector $v_i$ contenga un valor para cada uno de los $m$ hiperparámetros que queremos probar. Para cada vector de hiperparámetros $v_i$ realizaremos una validación cruzada, de forma que podamos obtener un resultado de precisión y error para cada combinación de hiperparámetros. Luego se usará la regla del One-Standard-Error para seleccionar el hiperparámetro más simple que tenga un rendimiento aceptable.
+
+Para realizar la validación cruzada se hará lo siguiente:
+
+1. Se dividirá el conjunto de entrenamiento en 5 pliegues, de forma que cada pliegue contenga el 20% de los datos de entrenamiento.
+2. Se entrenará el modelo con 4 pliegues y se validará con el pliegue restante. Se repetirá este proceso 5 veces, de forma que cada pliegue sea el de validación una vez.
+3. Se calculará la media de los resultados obtenidos en cada pliegue para obtener una estimación más precisa del rendimiento del modelo.
+4. Se calculará el error estándar de la media con el fin de obtener una estimación de la variabilidad de la media.
+5. Se seleccionará el hiperparámetro más simple cuyo valor medio más error estándar esté dentro del margen del valor máximo de precisión menos su error estándar. Por ejemplo, si el valor máximo es de $0.8 \pm 0.1$, se podrán seleccionar valores como $0.6 \pm 0.2$, ya que $0.6 + 0.2 > 0.8 - 0.1$.
+
+Para comprobar la eficacia de un conjunto de hiperparámetros hay que utilizar una métrica de evaluación. En nuestro caso, utilizaremos el F1-Score. Esta métrica es una media armónica de la precisión y la sensibilidad, y se calcula como $2 \times \frac{Precision \times Sensitivity}{Precision + Sensitivity}$. El F1-Score es una métrica más adecuada para problemas de clasificación binaria desbalanceada, como es nuestro caso, debido al balance que hace.
+
+Después de realizar la validación con un vector $v_i$, se guardará una media del F1-Score y un error estándar de esta media, de forma que para cada conjunto de hiperparámetros $v_i$ se obtendrá un F1-Score medio y un error estándar asociado. Luego, se escogerá el vector de hiperparámetros más sencillos que contenga un F1-Score medio más error estándar dentro del margen del valor máximo de F1-Score menos su error estándar. Es decir, si tenemos un máximo de F1-Score de $0.8 \pm 0.1$, podremos seleccionar valores como $0.6 \pm 0.2$, ya que $0.6 + 0.2 > 0.8 - 0.1$.
+
+
 # Bagging. {#bagging}
 
+## Explicación del modelo
+En esta sección vamos a realizar una clasificación mediante un algoritmo de Bagging, concretamente un algoritmo Random Forest. Vamos a explicar cómo funciona el modelo.
+
+El método de Bagging (Bootstrap Aggregating) es un procedimiento utilizado para reducir la varianza de un método de aprendizaje estadístico, siendo particularmente útil en el contexto de árboles de decisión, aunque puede usarse en otros métodos. Bagging implica crear múltiples copias del conjunto de datos de entrenamiento original usando el método Bootstrap, ajustar un árbol de decisión separado a cada copia, y luego combinar todos los árboles para crear un único modelo predictivo. En el caso de la clasificación, que es el que nos interesa, la predicción final se realiza por votación de los árboles individuales.
+
+El Random Forest es un caso particular de Bagging. El modelo de Random Forest introduce una modificación para decorrelacionar los árboles, reduciendo así la varianza cuando se promedian estos árboles. Al igual que en Bagging, Random Forest construye múltiples árboles de decisión sobre muestras de entrenamiento obtenidas mediante Bootstrap. Sin embargo, introduce un paso adicional en la construcción de cada árbol que marca la principal diferencia con el método de Bagging: cuando se construye un árbol de decisión este utiliza solo $m$ predictores, escogidos aleatoriamente de entre los $p$ predictores disponibles.
+
+Los hiperparámetros que utiliza el modelo Random Forest son los siguientes:
+
+- $mtry$: Número de predictores que se seleccionan aleatoriamente en cada nodo para elegir la división óptima. El valor de $mtry$ que suele usarse en el caso de la clasificación es $\sqrt{p}$, siendo $p$ el número total de predictores. Por lo tanto, probaremos con $mtry = \sqrt{p} - 1$, $mtry = \sqrt{p}$ y $mtry = \sqrt{p} + 1$.
+- $ntree$: Número de árboles que se construyen. A mayor cantidad de árboles se reduce la varianza del modelo, pero aumenta el tiempo de computación. Probaremos con $ntree = 300, 350, 400, 450, 500, 550, 600, 650, 700$.
+- $nsizes$: Número máximo de nodos terminales en los árboles. A mayor número de nodos terminales, más profundos serán los árboles y más complejo será el modelo. Como tenemos un total de 32591 elementos en nuestro dataset, probaremos con $nsizes = 1500, 1600, 1700, 1800, 1900, 2000, 2100, 2200, 2300, 2400, 2500$.
+
+## Preparación de los datos de entrenamiento, prueba y los folds
+
+Lo primero de todo es escalar los datos para que tengan media 0 y varianza 1. Esto es necesario para que el modelo funcione correctamente.
+```{r}
+# Escogemos los datos numéricos
+mydf.numeric <- mydf[, sapply(mydf, is.numeric)]
+
+# Escalamos los datos numéricos
+mydf.numeric.scaled <- scale(mydf.numeric)
+
+# Introducimos los datos escalados en el dataset
+mydf[, sapply(mydf, is.numeric)] <- mydf.numeric.scaled
+```
+
+Vamos a dividir el conjunto de datos en un conjunto de entrenamiento y un conjunto de prueba.
+```{r}
+# Dividimos el dataset en train y test
+train_index <- sample(1:nrow(mydf), nrow(mydf) * 0.8)
+train <- mydf[train_index, ]
+test <- mydf[-train_index, ]
+```
+
+Ahora dividimos el conjunto de train en 5 pliegues para realizar la validación cruzada.
+```{r}
+# Definimos el número de pliegues
+n <- 5
+
+# Generamos un vector de igual longitud que el numero de filas de train, asociando cada valor a un pliegue
+folds_indexes <- sample(rep(1:n, length.out = nrow(train)))
+
+# Obtenemos los pliegues aplicando la secuencia anterior a los datos de train
+folds <- split(train, folds_indexes)
+```
+
+De esta forma ya tenemos cinco pliegues preparados para realizar validacion cruzada.
+
+## Proceso de validación cruzada
+Vamos a realizar la validación cruzada con el bagging. Para realizar la validación cruzada vamos a utilizar el paquete `doParallel`. Esta librería nos permite realizar cálculos en paralelo, lo que nos permitirá reducir el tiempo de cálculo. 
+```{r}
+# Creamos un cluster para realizar los cálculos en paralelo
+cl <- makeCluster(detectCores() - 1) # Dejamos un núcleo libre
+
+# Registramos el cluster
+registerDoParallel(cl)
+
+# Definimos los valores de mtry, ntree y nodesize que vamos a probar
+values.mtry.op <- as.integer(sqrt(ncol(mydf))) # Valor "óptimo" de mtry
+values.mtry <- c(values.mtry.op - 1, values.mtry.op, values.mtry.op + 1)
+values.ntree <- c(300, 500, 700)
+values.nsizes <- c(10, 50, 100)
+
+# Creamos una matriz con todas las combinaciones posibles de los valores de mtry, ntree y nodesize
+v <- expand.grid(values.mtry, values.ntree, values.nsizes)
+colnames(v) <- c("mtry", "ntree", "nodesize")
+
+# Creamos una variable de tiempo para ver cuánto tarda en ejecutarse
+inicio <- Sys.time()
+
+# Creamos una variable para guardar el F1-Score
+f1score.folds <- rep(0, length(folds))
+accuracy.folds <- rep(0, length(folds))
+
+# Realizamos la validación cruzada con todos los pliegues e hiperparámetros
+crossvalidation.results <- foreach(i = 1:nrow(v), .combine = rbind, .packages = c("randomForest", "MLmetrics")) %dopar% {
+  for (k in seq(1:length(folds))) {
+    # Juntamos todos los folds menos el k
+    data <- do.call(rbind, folds[-k])
+
+    # Creamos el modelo de bagging
+    bag <- randomForest(Class ~ .,
+      data = data,
+      mtry = v[i, 1], ntree = v[i, 2], nodesize = v[i, 3]
+    )
+
+    # Predecimos con el pliegue que hemos dejado fuera del entrenamiento
+    y.pred <- predict(bag, newdata = folds[[k]])
+
+    # Guardamos los valores reales
+    y.true <- folds[[k]]$Class
+
+    # Guardamos el F1-Score obtenido comparando las predicciones y los datos reales del pliegue k
+    f1score.folds[k] <- F1_Score(y_pred = y.pred, y_true = y.true, positive = "Keylogger")
+    accuracy.folds[k] <- Accuracy(y_pred = y.pred, y_true = y.true)
+  }
+
+  # Hacemos la media de los F1-Score de todos los pliegues
+  mean.f1score <- mean(f1score.folds)
+  se.f1score <- sd(f1score.folds) / sqrt(length(folds))
+
+  # Hacemos una media del Accuracy de todos los pliegues
+  mean.accuracy <- mean(accuracy.folds)
+  se.accuracy <- sd(accuracy.folds) / sqrt(length(folds))
+
+  # Devolvemos los resultados
+  c(mean.f1score, se.f1score, mean.accuracy, se.accuracy)
+}
+
+# Guardamos el tiempo final
+final <- Sys.time()
+
+# Calculamos el tiempo de entrenamiento
+train.time <- as.numeric(difftime(final, inicio, units = "secs"))
+train.time <- sprintf("%02.0f:%02.0f:%02.0f", train.time %/% 3600, (train.time %% 3600) %/% 60, train.time %% 60)
+
+# Guaradmos el tiempo de entrenamiento en un DataFrame
+train.time.df <- data.frame(time_bagging = train.time)
+train.time.df$time_bagging_sec <- as.numeric(difftime(final, inicio, units = "secs"))
+
+# Guardamos el tiempo de entrenamiento en un archivo
+write.csv(train.time.df, "train_time.csv", row.names = FALSE)
+
+# Creamos un DataFrame con los resultados de la validación cruzada
+crossvalidation.results <- as.data.frame(crossvalidation.results)
+colnames(crossvalidation.results) <- c("mean_f1score", "se_f1score", "mean_accuracy", "se_accuracy")
+crossvalidation.results <- cbind(v, crossvalidation.results)
+
+# Guardamos los resultados de la validación cruzada en un archivo
+write.csv(crossvalidation.results, "crossvalitadion_bagging.csv", row.names = FALSE)
+
+crossvalidation.results
+```
 
 
 # Red Neuronal. {#red-neuronal}
 
+## Explicación del modelo
 Dado que el número de datos que tenemos disponibles para entrenar el modelo elegido puede considerarse relativamente alto, una buena opción a utilizar es la red neuronal, la cual mejora su rendimiento cuando dispone de muchos datos. Además, tanto la alta dimensionalidad, como la aparente complejidad en las relaciones entre la variable de salida y las de entrada, pueden ser idóneas para un modelo especializado en captar relaciones no lineales, como es el de la red neuronal. En este modelo, son tres los posibles hiperparámetros entre los que elegir, siendo los dos primeros relativos a la propia arquitectura de la red:
 
-- Neuronas en la primera capa. Se elegirá entre los valores 16, 32 y 1024. A más neuronas en la capa, el modelo amplía en complejidad, lo que puede ayudar con la no linealidad de nuestro problema.
+- $units$ en la primera capa. Se elegirá entre los valores $units = 16, 32, 1024$. Con más neuronas en la capa, el modelo amplía en complejidad, lo que puede ayudar con la no linealidad de nuestro problema, pero también puede conducir a un sobreajuste, además de que aumenta el tiempo de entrenamiento.
 
-- Neuronas en la segunda capa. Los valores posibles son 0, 16, 32 y 1024. El primer valor indica que esta capa no es incluida directamente en el modelo, por lo que solo se construiría la red con la primera capa definida anteriormente.
+- $units$ en la segunda capa. Los valores posibles son  $units = 0, 16, 32, 1024$. El primer valor indica que esta capa no es incluida directamente en el modelo, por lo que solo se construiría la red con la primera capa definida anteriormente.
 
-- Número de épocas. Es el número de veces que, durante el proceso de entrenamiento, la red ha usado el conjunto total de datos disponibles para entrenar. Cuanto mayor es, más permite al modelo ajustarse a dichos datos y minimizar el error de entrenamiento. Sin embargo, esto conlleva un inconveniente, ya que si el modelo se ajusta demasiado, puede ocurrir overfitting y que no generalice bien a los datos de test. Es por ello que resulta necesario controlar el número de épocas como hiperparámetro. 
+- $epochs$. Es el número de veces que, durante el proceso de entrenamiento, la red ha usado el conjunto total de datos disponibles para entrenar. Cuanto mayor es, más permite al modelo ajustarse a dichos datos y minimizar el error de entrenamiento. Sin embargo, esto conlleva un inconveniente, ya que si el modelo se ajusta demasiado, puede ocurrir overfitting y que no generalice bien a los datos de test. Es por ello que resulta necesario controlar el número de épocas como hiperparámetro. Los valores probados serán $epochs = 50, 100, 150, 200$.
 
-Hay otros aspectos de la arquitectura de la red a tener en cuenta. Las funciones de activación que se tendrán en todas las neuronas será la misma: la función 'relu', la cual dota de no linealidad al modelo. También, debido a la alta dimensionalidad de nuestro problema, se ha aplicado regularización a la red añadiendole una capa de regularización 'Dropout' de tasa 0.2 tras cada capa oculta. Para la capa de salida, se usarán dos neuronas, una por cada clase distinta, con función de activación 'softmax', que produce como salida la probabilidad de que un vector de entrada pertenezca a su correspondiente clase.
+Hay otros aspectos de la arquitectura de la red a tener en cuenta. Las funciones de activación que se tendrán en todas las neuronas será la misma: la función $activation = "relu"$, la cual dota de no linealidad al modelo. También, debido a la alta dimensionalidad de nuestro problema, se ha aplicado regularización a la red añadiendole una capa de regularización 'Dropout' de $rate = 0.2$ tras cada capa oculta. Para la capa de salida, se usarán dos neuronas, una por cada clase distinta, con función de activación $activation = "softmax"$, que produce como salida la probabilidad de que un vector de entrada pertenezca a su correspondiente clase.
 
-En cuanto a la función de pérdida, se usa la "categorical_crossentropy", ideal para problemas de clasificación categórica, y el optimizador usado sera "Adam", el cual maneja el parámetro de learning rate por sí mismo, por lo que no es necesario tratar este último como un hiperparámetro que variar.
-
+En cuanto a la función de pérdida, se usa $loss = "categorical_crossentropy"$, ideal para problemas de clasificación categórica, y el optimizador usado sera $optimizer = optimizer_adam()$, el cual maneja el parámetro de tasa de aprendizaje por sí mismo, por lo que no es necesario tratar este último como un hiperparámetro que variar.
 
 # Análisis de resultados. {#analisis-resultados}
