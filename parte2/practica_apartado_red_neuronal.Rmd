@@ -22,6 +22,7 @@ library(randomForest)
 library(keras)
 library(magrittr)
 library(MLmetrics)
+library(doParallel)
 
 # Seleccionamos la semilla aleatoria para todo el cuaderno
 set.seed(12345)
@@ -45,9 +46,7 @@ mydf$Class <- as.factor(mydf$Class)
 # Nos aseguramos de que la clase positiva sea "Keylogger" asignando como clase de referencia a "Benign"
 mydf$Class <- relevel(mydf$Class, ref = "Benign")
 
-#Nos quedamos con las columnas numéricas
-# mydf.numeric <- mydf[,which(sapply(mydf, is.numeric))]
-# mydf.numeric <- as.data.frame(scale(mydf.numeric))
+#Nos quedamos con las columnas numéricas, y a estas columnas les aplicamos un escalado para mejorar las predicciones
 mydf.numeric <- as.data.frame(scale(sapply(mydf, as.numeric)))
 
 # Añadimos la columna a predecir
@@ -64,8 +63,6 @@ train_indices <- setdiff(1:nrow(mydf.numeric), test_indices)
 train <- mydf.numeric[train_indices, ]
 ```
 
-Para llevar a cabo el proceso de validación cruzada, dividiremos el conjunto de train en n pliegues. El número elegido será n=5 pliegues.
-
 ```{r}
 # Definimos el número de pliegues
 n <- 5
@@ -80,47 +77,51 @@ folds <- split(train, folds_indexes)
 
 
 ```{r}
-library(doParallel)
+# Creamos un cluster para realizar los cálculos en paralelo
+cl <- makeCluster(detectCores() - 1) # Dejamos un núcleo libre
 
-
-# Set up parallel backend to use multiple processors
-cl <- makeCluster(detectCores() - 1) # Leave one core free
+# Registramos el cluster
 registerDoParallel(cl)
 
-# Definimos los valores de mtry, ntree y nodesize que vamos a probar
-values.nneurons1 <- c(2**4, 2**5, 1024)
-values.nneurons2 <- c(0, 2**4, 2**5, 1024)
-values.epochs <- c(50, 100, 150, 200)
+# Definimos los valores de nodos, dropout y epocas que vamos a probar
+values.nneurons1 <- c(16, 32, 64)
+values.nneurons2 <- c(0, 16, 32, 64)
+values.dropout.rate <- c(0.1,0.3,0.5)
+values.epochs <- c(50, 100, 200)
 
-v <- expand.grid(values.nneurons1, values.nneurons2, values.epochs)
-colnames(v) <- c("Units Layer 1", "Units Layer 2", "Epocas")
+# Creamos una matriz con todas las combinaciones posibles de los valores de nodos, dropout y epocas
+v <- expand.grid(values.nneurons1, values.nneurons2, values.dropout.rate, values.epochs)
+colnames(v) <- c("Units Layer 1", "Units Layer 2", "Dropout Rate", "Epocas")
 
-f1.score.fold <- rep(0, length(folds))
-accuracy.fold <- rep(0, length(folds))
-
+# Creamos una variable de tiempo para ver cuánto tarda en ejecutarse
 inicio <- Sys.time()
 
-# Entrenamos el modelo de bagging en paralelo
-mean_accuracy_sd <- foreach(i = 1:nrow(v), .combine = rbind, .packages = c("keras", "MLmetrics")) %dopar% {
-  test_fold <- rep(0, length(folds))
+# Creamos una variable para guardar el F1-Score
+f1score.folds <- rep(0, length(folds))
+accuracy.folds <- rep(0, length(folds))
 
+# Entrenamos el modelo de bagging en paralelo
+crossvalidation.results <- foreach(i = 1:nrow(v), .combine = rbind, .packages = c("keras", "MLmetrics")) %dopar% {
+  
+  
+  # Configuramos los pesos para las distintas clases según la proporción en la que aparecen
   class_weights <- list(
-      "0" = 1, # Peso para la clase "benigno"
-      "1" = 0.585 / 0.415  # Peso para la clase "keylogger"
+      "0" = 1, # Peso para la clase "Benign"
+      "1" = prop.table(table(train$Class))[[1]] / prop.table(table(train$Class))[[2]]  # Peso para la clase "keylogger". Dividimos la proporción de "Benign" entre la de "Keylogger", en el conjunto de entrenamiento
     )
 
   # Creamos la red neuronal con los parámetros de los vectores
   if (v[i, 2] == 0) {
     modnn <- keras_model_sequential() %>%
       layer_dense(units = v[i, 1], activation = "relu", input_shape = c(ncol(mydf.numeric)-1)) %>%
-      layer_dropout(rate = 0.1) %>%
+      layer_dropout(rate = v[i, 3]) %>%
       layer_dense(units = 2, activation = "softmax")
   } else {
     modnn <- keras_model_sequential() %>%
       layer_dense(units = v[i, 1], activation = "relu", input_shape = c(ncol(mydf.numeric)-1)) %>%
-      layer_dropout(rate = 0.1) %>%
+      layer_dropout(rate = v[i, 3]) %>%
       layer_dense(units = v[i, 2], activation = "relu") %>%
-      layer_dropout(rate = 0.1) %>%
+      layer_dropout(rate = v[i, 3]) %>%
       layer_dense(units = 2, activation = "softmax")
   }
 
@@ -132,47 +133,72 @@ mean_accuracy_sd <- foreach(i = 1:nrow(v), .combine = rbind, .packages = c("kera
   )
 
   for (k in seq(1:length(folds))) {
+    
     # Juntamos todos los folds menos el k
     data <- do.call(rbind, folds[-k])
 
     # Definimos las variables de entrada y de salida del conjunto de entrenamiento
-    x_train <- as.matrix(data[, -ncol(data)])
-    y_train <- as.numeric(data$Class == "Keylogger")
+    x.train <- as.matrix(data[, -ncol(data)])
+    y.train <- as.numeric(data$Class == "Keylogger")
 
-    y_train <- to_categorical(y_train, 2)
+    #Pasamos la columna de salida de entrenamiento a dos columnas, donde cada una representa una clase
+    y.train <- to_categorical(y.train, 2)
+    
     # Entrenamos la red con el conjunto de entrenamiento
-    modnn %>% fit(x_train, y_train, epochs = v[i, 3], verbose = 1, class_weight = class_weights)
+    modnn %>% fit(x.train, y.train, epochs = v[i, 3], verbose = 0, class_weight = class_weights)
 
-    # Creamos las variables de entrada y salida para el conjunto de test
-    x_test <- as.matrix(folds[[k]][, -ncol(folds[[k]])])
-    y_test <- as.numeric(folds[[k]]$Class == "Keylogger")
+    # Definimos las variables de entrada y salida para el conjunto de test
+    x.test <- as.matrix(folds[[k]][, -ncol(folds[[k]])])
+    y.test <- as.numeric(folds[[k]]$Class == "Keylogger")
 
     # Predecimos la probabilidad de que la variable de salida sea "Keylogger"
-    yhat.modnn <- predict(modnn, x_test)
-    y_pred_class <- ifelse(yhat.modnn[, 2] > 0.5, 1, 0)
+    # Predecimos con el pliegue que hemos dejado fuera del entrenamiento
+    y.pred <- predict(modnn, x.test)
+    
+    # Definimos para la segunda columna de salida que tenga la etiqueta "Keylogger"
+    # si su probabilidad es mayor que 0.5
+    y.pred.class <- ifelse(y.pred[, 2] > 0.5, 1, 0)
 
-    # Guardamos la accuracy obtenida comparando las predicciones y los outputs reales del pliegue k
-    # f1.score.fold[k] <- F1_Score(y_pred = y_pred_class, y_true = y_test, positive = "1")
-    accuracy.fold[k] <- Accuracy(y_pred = y_pred_class, y_true = y_test)
-    F1_Score(y_pred = y_pred_class, y_true = y_test, positive = "1")
+    # Guardamos el F1-Score obtenido comparando las predicciones y los datos reales del pliegue k
+    f1score.folds[k] <- F1_Score(y_pred = y.pred.class, y_true = y.test, positive = "1")
+    accuracy.folds[k] <- Accuracy(y_pred = y.pred.class, y_true = y.test)
   }
 
-  # Hacemos la media de los accuracy de todos los pliegues
-  # mean_f1.score_fold <- mean(f1.score.fold)
-  mean_accuracy_fold <- mean(accuracy.fold)
+  # Hacemos la media de los F1-Score de todos los pliegues
+  mean.f1score <- mean(f1score.folds)
+  se.f1score <- sd(f1score.folds) / sqrt(length(folds))
 
+  # Hacemos una media del Accuracy de todos los pliegues
+  mean.accuracy <- mean(accuracy.folds)
+  se.accuracy <- sd(accuracy.folds) / sqrt(length(folds))
 
-  # sd_f1.score_fold <- sd(f1.score.fold)/sqrt(length(folds))
-  sd_accuracy_fold <- sd(accuracy.fold) / sqrt(length(folds))
-  c(mean_accuracy_fold, sd_accuracy_fold)
+  # Devolvemos los resultados
+  c(mean.f1score, se.f1score, mean.accuracy, se.accuracy)
 }
 
+# Guardamos el tiempo final
 final <- Sys.time()
 
-train_time <- as.numeric(difftime(final, inicio, units = "secs"))
+# Calculamos el tiempo de entrenamiento
+train.time <- as.numeric(difftime(final, inicio, units = "secs"))
+train.time <- sprintf("%02.0f:%02.0f:%02.0f", train.time %/% 3600, (train.time %% 3600) %/% 60, train.time %% 60)
 
-# Stop the cluster
-stopCluster(cl)
+# Guaradmos el tiempo de entrenamiento en un DataFrame
+train.time.df <- data.frame(time_bagging = train.time)
+train.time.df$time_bagging_sec <- as.numeric(difftime(final, inicio, units = "secs"))
+
+# Guardamos el tiempo de entrenamiento en un archivo
+write.csv(train.time.df, "train_time_neuralnetwork.csv", row.names = FALSE)
+
+# Creamos un DataFrame con los resultados de la validación cruzada
+crossvalidation.results <- as.data.frame(crossvalidation.results)
+colnames(crossvalidation.results) <- c("mean_f1score", "se_f1score", "mean_accuracy", "se_accuracy")
+crossvalidation.results <- cbind(v, crossvalidation.results)
+
+# Guardamos los resultados de la validación cruzada en un archivo
+write.csv(crossvalidation.results, "crossvalidation_neuralnetwork.csv", row.names = FALSE)
+
+crossvalidation.results
 ```
 
 ```{r}

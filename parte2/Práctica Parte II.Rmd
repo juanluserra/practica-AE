@@ -472,7 +472,7 @@ train.time.df <- data.frame(time_bagging = train.time)
 train.time.df$time_bagging_sec <- as.numeric(difftime(final, inicio, units = "secs"))
 
 # Guardamos el tiempo de entrenamiento en un archivo
-write.csv(train.time.df, "train_time.csv", row.names = FALSE)
+write.csv(train.time.df, "train_time_bagging.csv", row.names = FALSE)
 
 # Creamos un DataFrame con los resultados de la validación cruzada
 crossvalidation.results <- as.data.frame(crossvalidation.results)
@@ -480,7 +480,7 @@ colnames(crossvalidation.results) <- c("mean_f1score", "se_f1score", "mean_accur
 crossvalidation.results <- cbind(v, crossvalidation.results)
 
 # Guardamos los resultados de la validación cruzada en un archivo
-write.csv(crossvalidation.results, "crossvalitadion_bagging.csv", row.names = FALSE)
+write.csv(crossvalidation.results, "crossvalidation_bagging.csv", row.names = FALSE)
 
 crossvalidation.results
 ```
@@ -500,5 +500,132 @@ Dado que el número de datos que tenemos disponibles para entrenar el modelo ele
 Hay otros aspectos de la arquitectura de la red a tener en cuenta. Las funciones de activación que se tendrán en todas las neuronas será la misma: la función $activation = "relu"$, la cual dota de no linealidad al modelo. También, debido a la alta dimensionalidad de nuestro problema, se ha aplicado regularización a la red añadiendole una capa de regularización 'Dropout' de $rate = 0.2$ tras cada capa oculta. Para la capa de salida, se usarán dos neuronas, una por cada clase distinta, con función de activación $activation = "softmax"$, que produce como salida la probabilidad de que un vector de entrada pertenezca a su correspondiente clase.
 
 En cuanto a la función de pérdida, se usa $loss = "categorical_crossentropy"$, ideal para problemas de clasificación categórica, y el optimizador usado sera $optimizer = optimizer_adam()$, el cual maneja el parámetro de tasa de aprendizaje por sí mismo, por lo que no es necesario tratar este último como un hiperparámetro que variar.
+
+Dado que en el subapartado 'Preparación de los datos de entrenamiento, prueba y los folds' ya se han creado los pliegues con los que se realizará la validación cruzada, usaremos dichos pliegues para buscar los hiperparámetros óptimos de la red neuronal.
+
+##Proceso de validación cruzada
+El proceso de validación cruzada es análogo al del bagging, pero adaptado al algortimo de la red neuronal y sus hiperparámetros.
+```{r}
+# Creamos un cluster para realizar los cálculos en paralelo
+cl <- makeCluster(detectCores() - 1) # Dejamos un núcleo libre
+
+# Registramos el cluster
+registerDoParallel(cl)
+
+# Definimos los valores de nodos, dropout y epocas que vamos a probar
+values.nneurons1 <- c(16, 32, 64)
+values.nneurons2 <- c(0, 16, 32, 64)
+values.dropout.rate <- c(0.1,0.3,0.5)
+values.epochs <- c(50, 100, 200)
+
+# Creamos una matriz con todas las combinaciones posibles de los valores de nodos, dropout y epocas
+v <- expand.grid(values.nneurons1, values.nneurons2, values.dropout.rate, values.epochs)
+colnames(v) <- c("Units Layer 1", "Units Layer 2", "Dropout Rate", "Epocas")
+
+# Creamos una variable de tiempo para ver cuánto tarda en ejecutarse
+inicio <- Sys.time()
+
+# Creamos una variable para guardar el F1-Score
+f1score.folds <- rep(0, length(folds))
+accuracy.folds <- rep(0, length(folds))
+
+# Entrenamos el modelo de bagging en paralelo
+crossvalidation.results <- foreach(i = 1:nrow(v), .combine = rbind, .packages = c("keras", "MLmetrics")) %dopar% {
+  
+  # Configuramos los pesos para las distintas clases según la proporción en la que aparecen
+  class_weights <- list(
+      "0" = 1, # Peso para la clase "Benign"
+      "1" = prop.table(table(train$Class))[[1]] / prop.table(table(train$Class))[[2]]  # Peso para la clase "keylogger". Dividimos la proporción de "Benign" entre la de "Keylogger", en el conjunto de entrenamiento
+    )
+
+  # Creamos la red neuronal con los parámetros de los vectores
+  if (v[i, 2] == 0) {
+    modnn <- keras_model_sequential() %>%
+      layer_dense(units = v[i, 1], activation = "relu", input_shape = c(ncol(mydf.numeric)-1)) %>%
+      layer_dropout(rate = v[i, 3]) %>%
+      layer_dense(units = 2, activation = "softmax")
+  } else {
+    modnn <- keras_model_sequential() %>%
+      layer_dense(units = v[i, 1], activation = "relu", input_shape = c(ncol(mydf.numeric)-1)) %>%
+      layer_dropout(rate = v[i, 3]) %>%
+      layer_dense(units = v[i, 2], activation = "relu") %>%
+      layer_dropout(rate = v[i, 3]) %>%
+      layer_dense(units = 2, activation = "softmax")
+  }
+
+  # Compilamos la red neuronal
+  modnn %>% compile(
+    loss = "categorical_crossentropy",
+    optimizer = optimizer_adam(),
+    metrics = c("accuracy")
+  )
+
+  for (k in seq(1:length(folds))) {
+    
+    # Juntamos todos los folds menos el k
+    data <- do.call(rbind, folds[-k])
+
+    # Definimos las variables de entrada y de salida del conjunto de entrenamiento
+    x.train <- as.matrix(data[, -ncol(data)])
+    y.train <- as.numeric(data$Class == "Keylogger")
+
+    #Pasamos la columna de salida de entrenamiento a dos columnas, donde cada una representa una clase
+    y.train <- to_categorical(y.train, 2)
+    
+    # Entrenamos la red con el conjunto de entrenamiento
+    modnn %>% fit(x.train, y.train, epochs = v[i, 3], verbose = 0, class_weight = class_weights)
+
+    # Definimos las variables de entrada y salida para el conjunto de test
+    x.test <- as.matrix(folds[[k]][, -ncol(folds[[k]])])
+    y.test <- as.numeric(folds[[k]]$Class == "Keylogger")
+
+    # Predecimos la probabilidad de que la variable de salida sea "Keylogger"
+    y.pred <- predict(modnn, x.test)
+    
+    # Definimos para la segunda columna de salida que tenga la etiqueta "Keylogger"
+    # si su probabilidad es mayor que 0.5
+    y.pred.class <- ifelse(y.pred[, 2] > 0.5, 1, 0)
+
+    # Guardamos el F1-Score obtenido comparando las predicciones y los datos reales del pliegue k
+    f1score.folds[k] <- F1_Score(y_pred = y.pred.class, y_true = y.test, positive = "1")
+    accuracy.folds[k] <- Accuracy(y_pred = y.pred.class, y_true = y.test)
+  }
+
+  # Hacemos la media de los F1-Score de todos los pliegues
+  mean.f1score <- mean(f1score.folds)
+  se.f1score <- sd(f1score.folds) / sqrt(length(folds))
+
+  # Hacemos una media del Accuracy de todos los pliegues
+  mean.accuracy <- mean(accuracy.folds)
+  se.accuracy <- sd(accuracy.folds) / sqrt(length(folds))
+
+  # Devolvemos los resultados
+  c(mean.f1score, se.f1score, mean.accuracy, se.accuracy)
+}
+
+# Guardamos el tiempo final
+final <- Sys.time()
+
+# Calculamos el tiempo de entrenamiento
+train.time <- as.numeric(difftime(final, inicio, units = "secs"))
+train.time <- sprintf("%02.0f:%02.0f:%02.0f", train.time %/% 3600, (train.time %% 3600) %/% 60, train.time %% 60)
+
+# Guaradmos el tiempo de entrenamiento en un DataFrame
+train.time.df <- data.frame(time_bagging = train.time)
+train.time.df$time_bagging_sec <- as.numeric(difftime(final, inicio, units = "secs"))
+
+# Guardamos el tiempo de entrenamiento en un archivo
+write.csv(train.time.df, "train_time_neuralnetwork.csv", row.names = FALSE)
+
+# Creamos un DataFrame con los resultados de la validación cruzada
+crossvalidation.results <- as.data.frame(crossvalidation.results)
+colnames(crossvalidation.results) <- c("mean_f1score", "se_f1score", "mean_accuracy", "se_accuracy")
+crossvalidation.results <- cbind(v, crossvalidation.results)
+
+# Guardamos los resultados de la validación cruzada en un archivo
+write.csv(crossvalidation.results, "crossvalidation_neuralnetwork.csv", row.names = FALSE)
+
+crossvalidation.results
+```
 
 # Análisis de resultados. {#analisis-resultados}
