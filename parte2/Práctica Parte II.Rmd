@@ -485,6 +485,55 @@ write.csv(crossvalidation.results, "crossvalitadion_bagging.csv", row.names = FA
 crossvalidation.results
 ```
 
+```{r}
+# Cargamos los resultados de la validación cruzada
+crossvalidation.results <- read.table("crossvalitadion_bagging.csv", header = TRUE, sep = ",")
+
+# Seleccionamos los resultados para el F1-Score
+f1score.mean <- crossvalidation.results$mean_f1score
+f1score.se <- crossvalidation.results$se_f1score
+
+# Representamos los resultados en un plot para verlos mejor
+plot(f1score.mean)
+arrows(1:length(f1score.mean), f1score.mean - f1score.se, 1:length(f1score.mean), f1score.mean + f1score.se, angle = 90, code = 3, length = 0.1)
+
+# Seleccionamos el hiperparámetro que ha obtenido el mejor F1-Score
+f1score.max.arg <- which.max(f1score.mean)
+f1score.max.threshold <- f1score.mean[f1score.max.arg] - f1score.se[f1score.max.arg]
+f1score.values <- f1score.mean + f1score.se
+f1score.valids.args <- which(f1score.values > f1score.max.threshold)
+
+# Vemos los parámetros que podemos seleccionar y escogemos a mano el más simple con mejor resultado
+print(crossvalidation.results[f1score.valids.args, ])
+
+# Vemos el conjunto de hiperparámetros elegido
+v.op <- v[3, ]
+v.op <- as.vector(unlist(v.op))
+v.op
+```
+
+
+Una vez tenemos los hiperparámetros seleccionados, vamos a entrenar el modelo con el conjunto de entrenamiento y a realizar las predicciones con el conjunto de test.
+```{r}
+# Creamos el modelo de bagging con los hiperparámetros seleccionados
+bag <- randomForest(Class ~ ., data = train, mtry = v.op[1], ntree = v.op[2], nodesize = v.op[3])
+
+# Realizamos las predicciones con el conjunto de test
+y.pred <- predict(bag, newdata = test)
+
+# Guardamos los valores reales
+y.true <- test$Class
+
+# Calculamos el F1-Score y la precisión
+f1score <- F1_Score(y_pred = y.pred, y_true = y.true, positive = "Keylogger")
+accuracy <- Accuracy(y_pred = y.pred, y_true = y.true)
+print(paste("F1-Score: ", f1score, sep = ""))
+print(paste("Accuracy: ", accuracy, sep = ""))
+
+# Realizamos una matriz de confusión
+confusion_matrix <- table(predicted = y.pred, real = y.true)
+print(round(addmargins(prop.table(confusion_matrix)), 4) * 100)
+```
 
 # Red Neuronal. {#red-neuronal}
 
