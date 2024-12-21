@@ -41,6 +41,7 @@ library(keras)
 library(magrittr)
 library(doParallel)
 library(MLmetrics)
+library(reticulate)
 
 # Seleccionamos la semilla aleatoria para todo el cuaderno
 set.seed(12345)
@@ -392,9 +393,6 @@ n <- 5
 
 # Generamos un vector de igual longitud que el numero de filas de train, asociando cada valor a un pliegue
 folds_indexes <- sample(rep(1:n, length.out = nrow(train)))
-
-# Obtenemos los pliegues aplicando la secuencia anterior a los datos de train
-folds <- split(train, folds_indexes)
 ```
 
 De esta forma ya tenemos cinco pliegues preparados para realizar validacion cruzada.
@@ -481,10 +479,9 @@ crossvalidation.results <- cbind(v, crossvalidation.results)
 
 # Guardamos los resultados de la validación cruzada en un archivo
 write.csv(crossvalidation.results, "crossvalidation_bagging.csv", row.names = FALSE)
-
-crossvalidation.results
 ```
 
+Una vez hemos realizado la validación cruzda, vamos a representar los resultados y seleccionar los hiperparámetros que han obtenido el mejor F1-Score.
 ```{r}
 # Cargamos los resultados de la validación cruzada
 crossvalidation.results <- read.table("crossvalitadion_bagging.csv", header = TRUE, sep = ",")
@@ -522,7 +519,7 @@ bag <- randomForest(Class ~ ., data = train, mtry = v.op[1], ntree = v.op[2], no
 saveRDS(bag, "randomForest_model.rds")
 ```
 
-Cargamos el modelo y realizamos las predicciones con el conjunto de test. Calculamos el F1-Score y la precisión del modelo
+Cargamos el modelo y realizamos las predicciones con el conjunto de test. Calculamos el F1-Score y la precisión del modelo.
 ```{r}
 # Cargo el modelo de bagging
 bag <- readRDS("randomForest_model.rds")
@@ -547,7 +544,7 @@ print(round(addmargins(prop.table(confusion_matrix)), 4) * 100)
 # Red Neuronal. {#red-neuronal}
 
 ## Explicación del modelo
-Dado que el número de datos que tenemos disponibles para entrenar el modelo elegido puede considerarse relativamente alto, una buena opción a utilizar es la red neuronal, la cual mejora su rendimiento cuando dispone de muchos datos. Además, tanto la alta dimensionalidad, como la aparente complejidad en las relaciones entre la variable de salida y las de entrada, pueden ser idóneas para un modelo especializado en captar relaciones no lineales, como es el de la red neuronal. En este modelo, son tres los posibles hiperparámetros entre los que elegir, siendo los dos primeros relativos a la propia arquitectura de la red:
+Dado que el número de datos que tenemos disponibles para entrenar el modelo elegido puede considerarse relativamente alto, una buena opción a utilizar es la red neuronal, la cual mejora su rendimiento cuando dispone de muchos datos. Además, tanto la alta dimensionalidad como la aparente complejidad en las relaciones entre la variable de salida y las de entrada, pueden ser idóneas para un modelo especializado en captar relaciones no lineales, como es el de la red neuronal. En este modelo, son tres los posibles hiperparámetros entre los que elegir, siendo los dos primeros relativos a la propia arquitectura de la red:
 
 - $units$ en la primera capa. Se elegirá entre los valores $units = 16, 32, 1024$. Con más neuronas en la capa, el modelo amplía en complejidad, lo que puede ayudar con la no linealidad de nuestro problema, pero también puede conducir a un sobreajuste, además de que aumenta el tiempo de entrenamiento.
 
@@ -561,8 +558,23 @@ En cuanto a la función de pérdida, se usa $loss = "categorical_crossentropy"$,
 
 Dado que en el subapartado 'Preparación de los datos de entrenamiento, prueba y los folds' ya se han creado los pliegues con los que se realizará la validación cruzada, usaremos dichos pliegues para buscar los hiperparámetros óptimos de la red neuronal.
 
-##Proceso de validación cruzada
+## Proceso de validación cruzada
 El proceso de validación cruzada es análogo al del bagging, pero adaptado al algortimo de la red neuronal y sus hiperparámetros.
+
+Primero tenemos que pasar todas las variables a numéricas y escalarlas (excepto la variable "Class").
+```{r}
+# Convertimos todas las variables a numéricas y las escalamos
+mydf.numeric <- as.data.frame(scale(sapply(mydf, as.numeric)))
+mydf.numeric$Class <- mydf$Class
+
+# Seleccionamos el conjunto de test y entrenamiento con los índices creados en el apartado de bagging
+train <- mydf.numeric[train_index, ]
+test <- mydf.numeric[-train_index, ]
+
+# Obtenemos los pliegues aplicando los índices usados
+folds <- split(train, folds_indexes)
+```
+
 ```{r}
 # Creamos un cluster para realizar los cálculos en paralelo
 cl <- makeCluster(detectCores() - 1) # Dejamos un núcleo libre
@@ -571,10 +583,15 @@ cl <- makeCluster(detectCores() - 1) # Dejamos un núcleo libre
 registerDoParallel(cl)
 
 # Definimos los valores de nodos, dropout y epocas que vamos a probar
-values.nneurons1 <- c(16, 32, 64)
-values.nneurons2 <- c(0, 16, 32, 64)
-values.dropout.rate <- c(0.1,0.3,0.5)
-values.epochs <- c(50, 100, 200)
+# values.nneurons1 <- c(16, 32, 64)
+# values.nneurons2 <- c(0, 16, 32, 64)
+# values.dropout.rate <- c(0.1, 0.3, 0.5)
+# values.epochs <- c(50, 100, 200)
+
+values.nneurons1 <- c(16, 32)
+values.nneurons2 <- c(0, 16, 32)
+values.dropout.rate <- c(0.1, 0.5)
+values.epochs <- c(50, 100)
 
 # Creamos una matriz con todas las combinaciones posibles de los valores de nodos, dropout y epocas
 v <- expand.grid(values.nneurons1, values.nneurons2, values.dropout.rate, values.epochs)
@@ -589,22 +606,21 @@ accuracy.folds <- rep(0, length(folds))
 
 # Entrenamos el modelo de bagging en paralelo
 crossvalidation.results <- foreach(i = 1:nrow(v), .combine = rbind, .packages = c("keras", "MLmetrics")) %dopar% {
-  
   # Configuramos los pesos para las distintas clases según la proporción en la que aparecen
   class_weights <- list(
-      "0" = 1, # Peso para la clase "Benign"
-      "1" = prop.table(table(train$Class))[[1]] / prop.table(table(train$Class))[[2]]  # Peso para la clase "keylogger". Dividimos la proporción de "Benign" entre la de "Keylogger", en el conjunto de entrenamiento
-    )
+    "0" = 1, # Peso para la clase "Benign"
+    "1" = prop.table(table(train$Class))[[1]] / prop.table(table(train$Class))[[2]] # Peso para la clase "keylogger". Dividimos la proporción de "Benign" entre la de "Keylogger", en el conjunto de entrenamiento
+  )
 
   # Creamos la red neuronal con los parámetros de los vectores
   if (v[i, 2] == 0) {
     modnn <- keras_model_sequential() %>%
-      layer_dense(units = v[i, 1], activation = "relu", input_shape = c(ncol(mydf.numeric)-1)) %>%
+      layer_dense(units = v[i, 1], activation = "relu", input_shape = c(ncol(mydf.numeric) - 1)) %>%
       layer_dropout(rate = v[i, 3]) %>%
       layer_dense(units = 2, activation = "softmax")
   } else {
     modnn <- keras_model_sequential() %>%
-      layer_dense(units = v[i, 1], activation = "relu", input_shape = c(ncol(mydf.numeric)-1)) %>%
+      layer_dense(units = v[i, 1], activation = "relu", input_shape = c(ncol(mydf.numeric) - 1)) %>%
       layer_dropout(rate = v[i, 3]) %>%
       layer_dense(units = v[i, 2], activation = "relu") %>%
       layer_dropout(rate = v[i, 3]) %>%
@@ -619,27 +635,26 @@ crossvalidation.results <- foreach(i = 1:nrow(v), .combine = rbind, .packages = 
   )
 
   for (k in seq(1:length(folds))) {
-    
     # Juntamos todos los folds menos el k
     data <- do.call(rbind, folds[-k])
 
     # Definimos las variables de entrada y de salida del conjunto de entrenamiento
     x.train <- as.matrix(data[, -ncol(data)])
-    y.train <- as.numeric(data$Class == "Keylogger")
+    y.train <- as.matrix(as.numeric(data$Class == "Keylogger"))
 
-    #Pasamos la columna de salida de entrenamiento a dos columnas, donde cada una representa una clase
+    # Pasamos la columna de salida de entrenamiento a dos columnas, donde cada una representa una clase
     y.train <- to_categorical(y.train, 2)
-    
+
     # Entrenamos la red con el conjunto de entrenamiento
-    modnn %>% fit(x.train, y.train, epochs = v[i, 3], verbose = 0, class_weight = class_weights)
+    modnn %>% fit(x.train, y.train, epochs = v[i, 4], verbose = 0, class_weight = class_weights)
 
     # Definimos las variables de entrada y salida para el conjunto de test
     x.test <- as.matrix(folds[[k]][, -ncol(folds[[k]])])
     y.test <- as.numeric(folds[[k]]$Class == "Keylogger")
 
     # Predecimos la probabilidad de que la variable de salida sea "Keylogger"
-    y.pred <- predict(modnn, x.test)
-    
+    y.pred <- predict(modnn, x.test, verbose = 0)
+
     # Definimos para la segunda columna de salida que tenga la etiqueta "Keylogger"
     # si su probabilidad es mayor que 0.5
     y.pred.class <- ifelse(y.pred[, 2] > 0.5, 1, 0)
@@ -684,6 +699,95 @@ crossvalidation.results <- cbind(v, crossvalidation.results)
 write.csv(crossvalidation.results, "crossvalidation_neuralnetwork.csv", row.names = FALSE)
 
 crossvalidation.results
+```
+
+Una vez hemos realizado la validación cruzda, vamos a representar los resultados y seleccionar los hiperparámetros que han obtenido el mejor F1-Score.
+```{r}
+# Cargamos los resultados de la validación cruzada
+crossvalidation.results <- read.table("crossvalidation_neuralnetwork.csv", header = TRUE, sep = ",")
+
+# Seleccionamos los resultados para el F1-Score
+f1score.mean <- crossvalidation.results$mean_f1score
+f1score.se <- crossvalidation.results$se_f1score
+
+# Representamos los resultados en un plot para verlos mejor
+plot(f1score.mean)
+arrows(1:length(f1score.mean), f1score.mean - f1score.se, 1:length(f1score.mean), f1score.mean + f1score.se, angle = 90, code = 3, length = 0.1)
+
+# Seleccionamos el hiperparámetro que ha obtenido el mejor F1-Score
+f1score.max.arg <- which.max(f1score.mean)
+f1score.max.threshold <- f1score.mean[f1score.max.arg] - f1score.se[f1score.max.arg]
+f1score.values <- f1score.mean + f1score.se
+f1score.valids.args <- which(f1score.values > f1score.max.threshold)
+
+# Vemos los parámetros que podemos seleccionar y escogemos a mano el más simple con mejor resultado
+print(crossvalidation.results[f1score.valids.args, ])
+
+# Vemos el conjunto de hiperparámetros elegido
+v.op <- v[5, ]
+v.op <- as.vector(unlist(v.op))
+v.op
+```
+
+
+Una vez tenemos los hiperparámetros seleccionados, vamos a entrenar el modelo con el conjunto de entrenamiento. Guardaremos el modelo para no tener que volver a entrenarlo.
+```{r, eval = FALSE}
+k_clear_session()
+
+# Creamos la red neuronal con los parámetros seleccionados
+modnn <- keras_model_sequential() %>%
+  layer_dense(units = v.op[1], activation = "relu", input_shape = c(ncol(mydf.numeric) - 1)) %>%
+  layer_dropout(rate = v.op[3]) %>%
+  layer_dense(units = 2, activation = "softmax")
+
+# Compilamos la red neuronal
+modnn %>% compile(
+  loss = "categorical_crossentropy",
+  optimizer = optimizer_adam(),
+  metrics = c("accuracy")
+)
+
+# Entremanos la red neuronal
+train.numeric <- as.matrix(as.numeric(train$Class))
+train.numeric <- ifelse(train.numeric == 1, 0, 1)
+train.numeric <- to_categorical(train.numeric, 2)
+modnn %>% fit(
+  as.matrix(train[, -ncol(train)]),
+  train.numeric,
+  epochs = v.op[4],
+  verbose = 1,
+  class_weight = class_weights
+)
+
+# Guardamos el modelo de la red neuronal en Python
+py$modnn <- modnn
+py_run_string("modnn.save('neural_network_model.keras')")
+```
+
+```{r}
+# Cargamos la red neuronal de Python y lo pasamos a R
+py_run_string("from tensorflow.keras.models import load_model")
+py_run_string("model = load_model('neural_network_model.keras')")
+model <- py$model
+
+# Realizamos las predicciones con el conjunto de test
+test.numeric <- as.matrix(as.numeric(test$Class))
+test.numeric <- ifelse(test.numeric == 1, 0, 1)
+test.numeric <- to_categorical(test.numeric, 2)
+y.pred <- predict(modnn, as.matrix(test[, -ncol(test)]), verbose = 0)
+
+# Obtenemos las clases
+y.pred.class <- ifelse(y.pred[, 2] > 0.5, 1, 0)
+
+# Calculamos el F1-Score y la precisión
+f1score <- F1_Score(y_pred = y.pred.class, y_true = as.numeric(test$Class == "Keylogger"), positive = 1)
+accuracy <- Accuracy(y_pred = y.pred.class, y_true = as.numeric(test$Class == "Keylogger"))
+print(paste("F1-Score: ", f1score, sep = ""))
+print(paste("Accuracy: ", accuracy, sep = ""))
+
+# Realizamos una matriz de confusión
+confusion_matrix <- table(predicted = y.pred.class, real = as.numeric(test$Class == "Keylogger"))
+print(round(addmargins(prop.table(confusion_matrix)), 4) * 100)
 ```
 
 # Análisis de resultados. {#analisis-resultados}

@@ -1,0 +1,11 @@
+{
+    "r.bracketedPaste": true,
+    "r.plot.useHttpgd": true,
+    "r.rterm.windows": "C:\\Users\\X542UA\\Documents\\.virtualenvs\\r-tensorflow\\Scripts\\radian.exe",
+    "[rmd]": {
+    "editor.wordWrap": "on"
+    },
+    "files.associations": {
+        "*.Rmd": "rmd"
+    },
+}
