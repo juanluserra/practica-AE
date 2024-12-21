@@ -3,6 +3,7 @@
 
 # Archivos varios
 Keylogger_Detection.csv
+settings.json
 
 # Linter files
 .lintr
