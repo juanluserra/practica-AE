@@ -1,7 +1,8 @@
 {
     "r.bracketedPaste": true,
     "r.plot.useHttpgd": true,
-    "r.rterm.windows": "C:\\Users\\X542UA\\Documents\\.virtualenvs\\r-tensorflow\\Scripts\\radian.exe",
+    // "r.rterm.windows": "D:\\Juanlu\\.venv\\Scripts\\radian.exe",
+    "r.rterm.windows": "D:/Juanlu/.virtualenvs/r-tensorflow/Scripts/radian.exe",
     "[rmd]": {
     "editor.wordWrap": "on"
     },

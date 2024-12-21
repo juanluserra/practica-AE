@@ -1,8 +1,8 @@
 # Carpetas
 .vscode/
 
-# Extensiones varias
-*.csv
+# Archivos varios
+Keylogger_Detection.csv
 
 # Linter files
 .lintr
