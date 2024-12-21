@@ -513,10 +513,19 @@ v.op
 ```
 
 
-Una vez tenemos los hiperparámetros seleccionados, vamos a entrenar el modelo con el conjunto de entrenamiento y a realizar las predicciones con el conjunto de test.
-```{r}
+Una vez tenemos los hiperparámetros seleccionados, vamos a entrenar el modelo con el conjunto de entrenamiento. Guardaremos el modelo para no tener que volver a entrenarlo.
+```{r, eval = FALSE}
 # Creamos el modelo de bagging con los hiperparámetros seleccionados
 bag <- randomForest(Class ~ ., data = train, mtry = v.op[1], ntree = v.op[2], nodesize = v.op[3])
+
+# Guardamos el modelo de bagging
+saveRDS(bag, "randomForest_model.rds")
+```
+
+Cargamos el modelo y realizamos las predicciones con el conjunto de test. Calculamos el F1-Score y la precisión del modelo.
+```{r}
+# Cargo el modelo de bagging
+bag <- readRDS("randomForest_model.rds")
 
 # Realizamos las predicciones con el conjunto de test
 y.pred <- predict(bag, newdata = test)
