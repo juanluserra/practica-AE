@@ -522,7 +522,7 @@ bag <- randomForest(Class ~ ., data = train, mtry = v.op[1], ntree = v.op[2], no
 saveRDS(bag, "randomForest_model.rds")
 ```
 
-Cargamos el modelo y realizamos las predicciones con el conjunto de test. Calculamos el F1-Score y la precisión del modelo.
+Cargamos el modelo y realizamos las predicciones con el conjunto de test. Calculamos el F1-Score y la precisión del modelo
 ```{r}
 # Cargo el modelo de bagging
 bag <- readRDS("randomForest_model.rds")
