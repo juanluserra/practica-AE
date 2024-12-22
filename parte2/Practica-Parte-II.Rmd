@@ -105,10 +105,11 @@ print(tabla.contingencia)
 Se puede ver cómo todos los valores que no son "0" en "CWE.Flag.Count" son "Keylogger". Esto quiere decir que la variable "CWE.Flag.Count" es un predictor muy importante para el análisis que queremos realizar del dataset. Además, esto puede indicarnos que los valores que no son "0" pueden ser un tipo de vulnerabilidad del sistema. Por ello, para poder trabajar de forma más estándar con esta variable, vamos a convertir los valores anómalos a "1", de forma que solo tenga valores "0" y "1".
 ```{r, eval = FALSE}
 # Convertimos los valores anómalos a 1
-mydf$CWE.Flag.Count <- ifelse(mydf$CWE.Flag.Count != "0", "1", mydf$CWE.Flag.Count)
+mydf$CWE.Flag.Count <- ifelse(mydf$CWE.Flag.Count == "0", "1", mydf$CWE.Flag.Count)
+mydf$CWE.Flag.Count <- as.numeric(mydf$CWE.Flag.Count)
 ```
 
-Una vez eliminamos las variables innecesarias, vamos a comprobar los valores nulos del dataset y ver cómo los tratamos. Empecemos viendo la cantidad de filas con nulos.
+Ahora vamos a comprobar los valores nulos del dataset y ver cómo los tratamos. Empecemos viendo la cantidad de filas con nulos.
 ```{r}
 # Buscamos las filas con valores nulos
 na.coordinates <- which(is.na(mydf), arr.ind = TRUE)
@@ -193,23 +194,24 @@ table(mydf$Class) / nrow(mydf) * 100
 Vemos que la proporción de casos positivos y negativos no cambia. Por lo tanto, el dataset procesado sirve para trabajar. 
 
 # Sampleo de los datos. {#sampleo}
-Para poder trabajar con holgura a lo largo de la práctica, vamos a coger una muestra del dataset original del 20%. De esta forma, los tiempos de ejecución serán menores y podremos trabajar más rápido. Para poder trabajar con el dataset sampleado, tendremos que conseguir que la proporción de casos positivos y negativos sea la misma que en el dataset original. Para ello, se cogerán filas aleatoriamente sin reemplazo y con una probabilidad uniforme. 
-
-```{r}
+Para poder trabajar con holgura a lo largo de la práctica, vamos a coger una muestra del dataset original del 20%. De esta forma, los tiempos de ejecución serán menores y podremos trabajar más rápido.
+```{r, eval = FALSE}
 # Sampleamos el dataset
 mydf.sample <- mydf[sample(nrow(mydf), nrow(mydf) * 0.2), ]
+
+# Guardamos el dataset sampleado
+write.csv(mydf.sample, "sampled.csv", row.names = FALSE)
+```
+
+Una vez tenemos el dataset sampleado, vamos a comprobar que la proporción de casos positivos y negativos no ha cambiado.
+```{r, eval = FALSE}
+mydf.sample <- read.csv("sampled.csv", header = TRUE, sep = ",")
 
 # Porcentaje de valores positivos y negativos en el dataset sampleado
 table(mydf.sample$Class) / nrow(mydf.sample) * 100
 
 # Porcentaje de valores positivos y negativos en el dataset original
 table(mydf.original$Class) / nrow(mydf.original) * 100
-```
-
-Vemos que la proporción de casos positivos y negativos en el dataset sampleado es casi idéntica a la del dataset original. Por lo tanto, el dataset sampleado sirve para trabajar. Vamos a guardar dicho dataset sampleado.
-```{r, eval = FALSE}
-# Guardamos el dataset sampleado
-write.csv(mydf.sample, "sampled.csv", row.names = FALSE)
 ```
 
 
