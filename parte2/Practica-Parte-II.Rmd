@@ -110,7 +110,7 @@ Dentro de esta agrupación surge otro subgrupo, ya que existen otras variables q
   10.1. Forward. La variable es Init_Win_bytes_forward.
   10.2. Backward. La variable es Init_Win_bytes_backward.
   
---Falta completar el 10, añadir grupos de act_data_pkt_fwd y min_seg_size_forward, revisar si coinciden el número de variables con las mencionadas aquí y ordenar grupos por orden de aparición en el dataset (opcional). La variable Fwd.Header.Length.1 sobra en el dataset porque es igual a Fwd.Header.Length--
+--Falta completar el 10, añadir act_data_pkt_fwd y min_seg_size_forward, revisar si coinciden el número de variables con las mencionadas aquí y ordenar por orden de aparición en el dataset (opcional). La variable Fwd.Header.Length.1 sobra en el dataset porque es igual a Fwd.Header.Length--
   
 
 # Preprocesamiento de los datos. {#preprocesamiento}
