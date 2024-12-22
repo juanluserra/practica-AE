@@ -142,6 +142,20 @@ La explicación de por qué hemos eliminado cada variable es la siguiente:
 - "Source.IP" y "Destination.IP" son identificadores de los dispositivos fuente y destino, respectivamente, y no son características del flujo. No aportan información al análisis. Además, no pueden interpretarse como variables ni numéricas ni categóricas (ya que tendrían demasiados valores únicos), y no se puede realizar un análisis siendo variables de tipo character.
 - "Source.Port" y "Destination.Port" son los puertos de origen y destino, respectivamente, y no son características del flujo. No aportan información al análisis. No pueden interpretarse como variables categóricas (ya que tendrían demasiados valores únicos), y no dan información real de tipo numérico.
 
+Al analizar las variables vemos que hay una con una situación particular. Se trata de "CWE.Flag.Count", que tiene valores "0", "0.0", "" y "SCAREWARE". Además, estos valores atípicos no son pocos, suponen el 6% del total, más que los valores "1" de otros Flags como "FIN.Flag.Count", donde solo el 1.7% son valores 1. Esto puede deberse a que, por un error, los valores atípicos deberían ser 1. Si fuera un error de tipografía que pasará algunos valores 0 a 0.0 no habría tantos casos. Además, a esto se le suma que este Flag indica "Common Weakness Enumeration", que es un estándar utilizado para categorizar y describir vulnerabilidades en sistemas de software, lo que puede ser relevante para detectar keyloggers. 
+
+Para determinar la importancia de esta variable, antes de decidir cómo trabajar con ella, vamos a realizar una tabla de contingencia con la variable "Class" para ver cómo se distribuyen los valores de "CWE.Flag.Count" en función de si la conexión es benigna o maligna.
+```{r}
+# Creamos una tabla de contingencia
+tabla.contingencia <- addmargins(table(mydf$CWE.Flag.Count, mydf$Class))
+print(tabla.contingencia)
+```
+
+Se puede ver cómo todos los valores que no son "0" en "CWE.Flag.Count" son "Keylogger". Esto quiere decir que la variable "CWE.Flag.Count" es un predictor muy importante para el análisis que queremos realizar del dataset. Además, esto puede indicarnos que los valores que no son "0" pueden ser un tipo de vulnerabilidad del sistema. Por ello, para poder trabajar de forma más estándar con esta variable, vamos a convertir los valores anómalos a "1", de forma que solo tenga valores "0" y "1".
+```{r, eval = FALSE}
+# Convertimos los valores anómalos a 1
+mydf$CWE.Flag.Count <- ifelse(mydf$CWE.Flag.Count != "0", "1", mydf$CWE.Flag.Count)
+```
 
 Una vez eliminamos las variables innecesarias, vamos a comprobar los valores nulos del dataset y ver cómo los tratamos. Empecemos viendo la cantidad de filas con nulos.
 ```{r}
@@ -172,16 +186,6 @@ Vamos a eliminar las columnas con desviación estándar cero. Para ello, psaremo
 ```{r, eval = FALSE}
 # Pasamos a numérico las variables que les corresponde
 mydf$Packet.Length.Std <- as.numeric(mydf$Packet.Length.Std)
-```
-
-Al analizar las variables vemos que hay una con una situación particular. Se trata de "CWE.Flag.Count", que tiene valores "0" y "0.0". Además, los valores "0.0" no son pocos, suponen el 6% del total, más que los valores "1" de otros Flags como "FIN.Flag.Count", donde solo el 1.7% son valores 1. Esto puede deberse a que, por un error, los valores 0.0 deberían ser 1. Si fuera un error de tipografía que pasará algunos valores 0 a 0.0 no habría tantos casos. Por lo tanto, se convertirán los valores "0.0" a "1" para que sigan el formato común con los otros Flags.
-
-```{r, eval = FALSE}
-# Convertimos los "0.0" a 1
-mydf$CWE.Flag.Count <- ifelse(mydf$CWE.Flag.Count == "0.0", "1", mydf$CWE.Flag.Count)
-
-# Pasamos a numérico la variable
-mydf$CWE.Flag.Count <- as.numeric(mydf$CWE.Flag.Count)
 
 # Seleccionamos las columnas numéricas
 num_cols <- which(sapply(mydf, is.numeric))
@@ -417,8 +421,8 @@ El Random Forest es un caso particular de Bagging. El modelo de Random Forest in
 Los hiperparámetros que utiliza el modelo Random Forest son los siguientes:
 
 - $mtry$: Número de predictores que se seleccionan aleatoriamente en cada nodo para elegir la división óptima. El valor de $mtry$ que suele usarse en el caso de la clasificación es $\sqrt{p}$, siendo $p$ el número total de predictores. Por lo tanto, probaremos con $mtry = \sqrt{p} - 1$, $mtry = \sqrt{p}$ y $mtry = \sqrt{p} + 1$.
-- $ntree$: Número de árboles que se construyen. A mayor cantidad de árboles se reduce la varianza del modelo, pero aumenta el tiempo de computación. Probaremos con $ntree = 300, 350, 400, 450, 500, 550, 600, 650, 700$.
-- $nsizes$: Número máximo de nodos terminales en los árboles. A mayor número de nodos terminales, más profundos serán los árboles y más complejo será el modelo. Como tenemos un total de 32591 elementos en nuestro dataset, probaremos con $nsizes = 1500, 1600, 1700, 1800, 1900, 2000, 2100, 2200, 2300, 2400, 2500$.
+- $ntree$: Número de árboles que se construyen. A mayor cantidad de árboles se reduce la varianza del modelo, pero aumenta el tiempo de computación. Probaremos con $ntree = 300, 500, 700$.
+- $nsizes$: Número mínimo de elementos que puede tener un nodo. A menor tamaño, más complejos se harán los árboles. Probaremos con $nsizes = 10, 50, 100$.
 
 ## Preparación de los datos de entrenamiento, prueba y los folds
 
@@ -455,6 +459,8 @@ De esta forma ya tenemos cinco pliegues preparados para realizar validacion cruz
 
 ## Proceso de validación cruzada
 Vamos a realizar la validación cruzada con el bagging. Para realizar la validación cruzada vamos a utilizar el paquete `doParallel`. Esta librería nos permite realizar cálculos en paralelo, lo que nos permitirá reducir el tiempo de cálculo. 
+
+Definimos los hiperparámetros.
 ```{r}
 # Definimos los valores de mtry, ntree y nodesize que vamos a probar
 values.mtry.op <- as.integer(sqrt(ncol(mydf))) # Valor "óptimo" de mtry
@@ -467,6 +473,7 @@ v <- expand.grid(values.mtry, values.ntree, values.nsizes)
 colnames(v) <- c("mtry", "ntree", "nodesize")
 ```
 
+Realizamos la validación cruzada con `doParallel`.
 ```{r, eval = FALSE}
 # Creamos un cluster para realizar los cálculos en paralelo
 cl <- makeCluster(detectCores() - 1) # Dejamos un núcleo libre
@@ -575,13 +582,13 @@ f1score.valids.args <- which(f1score.values > f1score.max.threshold)
 print(crossvalidation.results[f1score.valids.args, ])
 
 # Vemos el conjunto de hiperparámetros elegido
-v.op <- v[3, ]
+v.op <- v[1, ]
 v.op <- as.vector(unlist(v.op))
 names(v.op) <- c("mtry", "ntree", "nodesize")
 print(v.op)
 ```
 
-
+## Entrenamiento del modelo y predicciones
 Una vez tenemos los hiperparámetros seleccionados, vamos a entrenar el modelo con el conjunto de entrenamiento. Guardaremos el modelo para no tener que volver a entrenarlo.
 ```{r, eval = FALSE}
 # Creamos el modelo de bagging con los hiperparámetros seleccionados
@@ -603,14 +610,15 @@ y.pred <- predict(bag, newdata = test)
 y.true <- test$Class
 
 # Calculamos el F1-Score y la precisión
-f1score <- F1_Score(y_pred = y.pred, y_true = y.true, positive = "Keylogger")
-accuracy <- Accuracy(y_pred = y.pred, y_true = y.true)
-print(paste("F1-Score: ", f1score, sep = ""))
-print(paste("Accuracy: ", accuracy, sep = ""))
+f1score.bagging <- F1_Score(y_pred = y.pred, y_true = y.true, positive = "Keylogger")
+accuracy.bagging <- Accuracy(y_pred = y.pred, y_true = y.true)
+print(paste("F1-Score: ", f1score.bagging, sep = ""))
+print(paste("Accuracy: ", accuracy.bagging, sep = ""))
 
 # Realizamos una matriz de confusión
-confusion_matrix <- table(predicted = y.pred, real = y.true)
-print(round(addmargins(prop.table(confusion_matrix)), 4) * 100)
+confusion_matrix_bagging <- table(predicted = y.pred, real = y.true)
+confusion_matrix_bagging <- round(addmargins(prop.table(confusion_matrix_bagging)), 4) * 100
+print(confusion_matrix_bagging)
 ```
 
 # Red Neuronal. {#red-neuronal}
@@ -647,6 +655,7 @@ test <- mydf.numeric[-train_index, ]
 folds <- split(train, folds_indexes)
 ```
 
+Definimos los valores de nodos, dropout y epocas que vamos a probar.
 ```{r}
 # Definimos los valores de nodos, dropout y epocas que vamos a probar
 values.nneurons1 <- c(16, 32)
@@ -659,6 +668,7 @@ v <- expand.grid(values.nneurons1, values.nneurons2, values.dropout.rate, values
 colnames(v) <- c("Units Layer 1", "Units Layer 2", "Dropout Rate", "Epocas")
 ```
 
+Creamos un cluster con `doParallel` para realizar los cálculos en paralelo de la validación cruzada.
 ```{r, eval = FALSE}
 # Creamos un cluster para realizar los cálculos en paralelo
 cl <- makeCluster(detectCores() - 1) # Dejamos un núcleo libre
@@ -812,7 +822,7 @@ names(v.op) <- c("Units Layer 1", "Units Layer 2", "Dropout Rate", "Epocas")
 v.op
 ```
 
-
+## Entrenamiento del modelo y predicciones
 Una vez tenemos los hiperparámetros seleccionados, vamos a entrenar el modelo con el conjunto de entrenamiento. Guardaremos el modelo para no tener que volver a entrenarlo.
 ```{r, eval = FALSE}
 k_clear_session()
@@ -847,6 +857,7 @@ py$model <- modnn
 py_run_string("model.save('model.keras')")
 ```
 
+Cargamos el modelo y realizamos las predicciones con el conjunto de test. Calculamos el F1-Score y la precisión del modelo.
 ```{r}
 # Cargamos la red neuronal de Python y lo pasamos a R
 py_run_string("import keras")
@@ -863,14 +874,46 @@ y.pred <- predict(modnn, as.matrix(test[, -ncol(test)]), verbose = 0)
 y.pred.class <- ifelse(y.pred[, 2] > 0.5, 1, 0)
 
 # Calculamos el F1-Score y la precisión
-f1score <- F1_Score(y_pred = y.pred.class, y_true = as.numeric(test$Class == "Keylogger"), positive = 1)
-accuracy <- Accuracy(y_pred = y.pred.class, y_true = as.numeric(test$Class == "Keylogger"))
-print(paste("F1-Score: ", f1score, sep = ""))
-print(paste("Accuracy: ", accuracy, sep = ""))
+f1score.nn <- F1_Score(y_pred = y.pred.class, y_true = as.numeric(test$Class == "Keylogger"), positive = 1)
+accuracy.nn <- Accuracy(y_pred = y.pred.class, y_true = as.numeric(test$Class == "Keylogger"))
+print(paste("F1-Score: ", f1score.nn, sep = ""))
+print(paste("Accuracy: ", accuracy.nn, sep = ""))
 
 # Realizamos una matriz de confusión
-confusion_matrix <- table(predicted = y.pred.class, real = as.numeric(test$Class == "Keylogger"))
-print(round(addmargins(prop.table(confusion_matrix)), 4) * 100)
+confusion_matrix_nn <- table(predicted = y.pred.class, real = as.numeric(test$Class == "Keylogger"))
+confusion_matrix_nn <- round(addmargins(prop.table(confusion_matrix_nn)), 4) * 100
+print(confusion_matrix_nn)
 ```
 
 # Análisis de resultados. {#analisis-resultados}
+
+Vamos a analizar los resultados que hemos obtenido con los modelos de Bagging y de Red Neuronal. Para ello, volvamos a mostrar las matrices de confusión de ambos modelos. También representaremos el F1-Score y la precisión de ambos modelos.
+```{r}
+# Mostramos la matriz de confusión del modelo de Bagging
+print(confusion_matrix_bagging)
+print(paste("F1-Score Bagging: ", f1score.bagging, sep = ""))
+print(paste("Accuracy Bagging: ", accuracy.bagging, sep = ""))
+
+# Mostramos la matriz de confusión del modelo de Red Neuronal
+print(confusion_matrix_nn)
+print(paste("F1-Score Red Neuronal: ", f1score.nn, sep = ""))
+print(paste("Accuracy Red Neuronal: ", accuracy.nn, sep = ""))
+```
+
+De primeras vemos que el modelo de Bagging tiene valores tanto de F1-Score como de Accuracy mayores que la Red Neuronal. Analizando las matrices de confusión vemos lo siguiente:
+- Con el modelo de Bagging se predice correctamente el 86.63% de las conexiones benignas y el 49.42% de las conexiones keylogger. Por otro lado, de los casos predichos como benignos el 71.89% eran correctos y de los casos predichos como keylogger 72.18%.
+- Con el modelo de Red Neuronal se predice correctamente el 78.48% de las conexiones benignas y el 46.89 de las conexiones keylogger. Por otro lado, de los casos predichos como benignos el 68.32 eran correctos y de los casos predichos como keylogger 59.87%.
+
+Con este análisis podemos ver que el modelo de Bagging ha obtenido mejores resultados que el modelo de Red Neuronal, tanto en precisión como en sensibilidad. Se puede ver tanto en el F1-Score como en la matriz de confusión. Aún así, ni siquiera el modelo de Bagging ha sido realmente bueno prediciendo las conexiones keylogger, con solo una precisión del 49.42%. Esto es muy cercano a elegir al azar (50% - 50%) si una conexión es maligna o no, que sería una probabilidad del 48% (ya que hay un 48% de casos positivos y un 52% de negativos en el conjunto de entrenamiento).
+
+Es posible que la Red Neuronal no haya sido muy eficaz debido a que no hemos trabajado con el dataset completo, sino con un subconjunto de los datos, ya que las redes neuronales necesitan una gran cantidad de datos para aprender correctamente. También es posible que con una gran cantidad de épocas el modelo hubiera crecido lentamente, acercándose muy poco a poco a un resultado óptimo.
+
+Respecto a simplicidad, el modelo de Bagging es más simple que la red neuronal. Necesita menos cantidad de hiperparámetos y es más rápido de entrenar. Además, es más sencillo de interpretar, por lo que es preferible de utilizar en el caso de dar buenos resultados. Puede ser que este modelo haya dado mejores resultados ya que el Random Forest (el tipo de Bagigng que hemos usado) escoge aleatoriamente los predictores que va a usar, reduciendo la dimensionalidad del problema que de por sí en este dataset es muy alta. Esta reducción de la dimensionalidad y la simplicidad del modelo han podido ser factores clave para que el modelo de Bagging haya dado mejores resultados que la Red Neuronal. En el caso de haber tenido una mayor cantidad de datos, o que las variables no hubieran estado apenas correlacionadas entre sí, el modelo de Red Neuronal podría haber dado mejores resultados.
+
+```{r}
+# Análisis de importancia de variables
+importance_bagging <- importance(bag)
+importance_bagging <- importance_bagging[order(importance_bagging, decreasing = TRUE), ]
+
+addmargins(table(mydf$Class, mydf$CWE.Flag.Count))
+```
