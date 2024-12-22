@@ -62,7 +62,56 @@ mydf <- read.csv("Keylogger_Detection.csv", header = TRUE, sep = ",")
 str(mydf)
 ```
 
-_Aquí debemos agrupar las variables por grupos._
+Los grupos en los que pueden dividirse las variables del dataset son los siguientes:
+
+1. Características del flujo. Las variables pertenecientes a este grupo son: Flow.ID, Source.IP, Source.Port, Destination.IP, Destination.Port, Protocol, Timestamp y Class. Estas variables, como son el identificador, las direcciones IP y puertos de origen y destino, el protocolo usado, el instante temporal del flujo, y el tipo de la conexión (benigna o keylogger), son características que sirven principalmente para identificar de forma general al flujo, sin entrar en detalles acerca de sus paquetes.
+
+2. Características de los paquetes del flujo. Sus variables son Flow.Duration, Flow.Bytes.s y Flow.Packets.s. Como su nombre indica, este grupo está compuesto por características relacionadas con los paquetes del flujo, como su duración y el numero de bytes y paquetes por segundo (.s, per second). Hay otras variables en este grupo que distinguen entre características forward y backward. Son las siguientes:
+
+  2.1.Forward. Total.Fwd.Packets, Total.Length.of.Fwd.Packets, Fwd.Packets.s
+  2.2.Backward. Total.Backward.Packets, Total.Length.of.Bwd.Packets, Bwd.Packets.s
+  
+Dentro de esta agrupación surge otro subgrupo, ya que existen otras variables que tratan sobre características de los paquetes, pero a través de medidas estadísticas.
+
+  2.3.Características estadísticas de los paquetes del flujo. Son las siguientes: Min.Packet.Length, Max.Packet.Length, Packet.Length.Mean, Packet.Length.Std, Packet.Length.Variance, Average.Packet.Size. Puede apreciarse que los nombres de las variables contienen medidas estadísticas como la media, desviación estándar, mínimo, máximo... A su vez, existen otra subclasificación de este tipo de medidas estadísticas diferenciando entre forward y backward. 
+    
+    2.3.1.Forward. Avg.Fwd.Segment.Size, Total.Length.of.Fwd.Packets, Fwd.Packet.Length.Max, Fwd.Packet.Length.Min, Fwd.Packet.Length.Mean, Fwd.Packet.Length.Std
+    2.3.2.Backward. Avg.Bwd.Segment.Size, Total.Length.of.Bwd.Packets, Bwd.Packet.Length.Max, Bwd.Packet.Length.Min,             Bwd.Packet.Length.Mean, Bwd.Packet.Length.Std
+    
+3. Características sobre el tiempo transcurrido entre un paquete y el siguiente. Estas variables son las que contienen IAT (inter-arrival time). Aquí podemos distinguir entre tres grupos.
+
+  3.1. Medidas estadísticas sobre el IAT del flujo en general, sin distinguir entre forward y backward. Son Flow.IAT.Mean, Flow.IAT.Std, Flow.IAT.Max, Flow.IAT.Min.
+  3.2. Forward. Medidas sobre el IAT con característica forward. Son Fwd.IAT.Total, Fwd.IAT.Mean, Fwd.IAT.Std, Fwd.IAT.Max, Fwd.IAT.Min.
+  3.3. Backward. Medidas sobre el IAT con característica backward Son Bwd.IAT.Total, Bwd.IAT.Mean, Bwd.IAT.Std, Bwd.IAT.Max, Bwd.IAT.Min.
+  
+4. Características estadísticas sobre la actividad del flujo. Son medidas de carácter estadístico sobre el tiempo que un flujo estuvo enviando o recibiendo datos antes de volverse inactivo. Son las variables Active.Mean, Active.Std, Active.Max, Active.Min.
+
+5. Características estadísticas sobre la inactividad del flujo. Análogo al grupo anterior, también son medidas estadísticas sobre el tiempo en el que un flujo estuvo inactivo (idle) antes de volverse activo. Son las variables Idle.Mean, Idle.Std, Idle.Max, Idle.Min.
+
+6. Características sobre los flags. Este grupo contiene información sobre el número de paquetes del flujo que contienen distintos flags. Las variables que pertenecen a este conjunto son FIN.Flag.Count, SYN.Flag.Count, RST.Flag.Count, PSH.Flag.Count, ACK.Flag.Count, URG.Flag.Count, CWE.Flag.Count, ECE.Flag.Count. También existen otras variables de este grupo que tienen en cuenta si la dirección era forward o backward.
+  6.1. Forward. Son Fwd.PSH.Flags, Fwd.URG.Flags.
+  6.2. Backward. Son Bwd.PSH.Flags, Bwd.URG.Flags.
+
+7. Características sobre los bulk rates de los paquetes. Estas variables describen el número de paquetes que son transmitidos de forma masiva (bulk). Se distingue entre características forward y backward.
+  7.1. Forward. Son las variables Fwd.Avg.Bytes.Bulk, Fwd.Avg.Packets.Bulk, Fwd.Avg.Bulk.Rate.
+  7.2. Backward. Son las variables Bwd.Avg.Bytes.Bulk, Bwd.Avg.Packets.Bulk, Bwd.Avg.Bulk.Rate.
+  
+8. Características sobre los paquetes de los subflujos o flujos secundarios. Como su nombre indica, presentan información sobre los paquetes de este tipo de flujo. Pueden dividirse según la dirección del flujo.
+  8.1. Forward. Son Subflow.Fwd.Packets y Subflow.Fwd.Bytes.
+  8.2. Backward. Son Subflow.Bwd.Packets y Subflow.Bwd.Bytes.
+  
+9. Características sobre la longitud de la cabecera. Representan el total de bytes usados por las cabeceras, diferenciando entre direcciones forward y backward. Se dividen por tanto en:
+  9.1. Forward. La variable es Fwd.Header.Length.
+  9.2. Backward. La variable es Bwd.Header.Length.
+  
+10. Características sobre el ratio de bajada/subida.
+
+11. Características sobre la ventana inicial del flujo. Son el número de total de bytes transferidos, tanto en la dirección forward como en la backward, en la ventana inicial del flujo. Tenemos de nuevo la siguiente división:
+  10.1. Forward. La variable es Init_Win_bytes_forward.
+  10.2. Backward. La variable es Init_Win_bytes_backward.
+  
+--Falta completar el 10, añadir grupos de act_data_pkt_fwd y min_seg_size_forward, revisar si coinciden el número de variables con las mencionadas aquí y ordenar grupos por orden de aparición en el dataset (opcional). La variable Fwd.Header.Length.1 sobra en el dataset porque es igual a Fwd.Header.Length--
+  
 
 # Preprocesamiento de los datos. {#preprocesamiento}
 Antes de empezar con los análisis se deben preprocesar los datos. En esta sección se explicarán los preprocesamientos realizados y sus razonamientos.
