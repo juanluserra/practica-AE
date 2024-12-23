@@ -339,7 +339,7 @@ Vemos que necesitamos las 11 primeras componentes principales para explicar el 8
 
 Vamos a realizar un biplot para ver cómo se relacionan las variables con las dos primeras componentes principales.
 ```{r biplot, eval = FALSE}
-# Realizamos un biplot solo con los vectores, no con los datos
+# Realizamos un biplot
 png("biplot.png")
 biplot(
   pr.out,
