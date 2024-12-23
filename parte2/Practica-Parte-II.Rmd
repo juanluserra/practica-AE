@@ -63,57 +63,56 @@ mydf <- read.csv("Keylogger_Detection.csv", header = TRUE, sep = ",")
 str(mydf)
 ```
 
-Los grupos en los que pueden dividirse las variables del dataset son los siguientes:
+Los grupos en los que pueden dividirse las variables del dataset según su temática son los siguientes:
 
-1. Características del flujo. Las variables pertenecientes a este grupo son: Flow.ID, Source.IP, Source.Port, Destination.IP, Destination.Port, Protocol, Timestamp y Class. Estas variables, como son el identificador, las direcciones IP y puertos de origen y destino, el protocolo usado, el instante temporal del flujo, y el tipo de la conexión (benigna o keylogger), son características que sirven principalmente para identificar de forma general al flujo, sin entrar en detalles acerca de sus paquetes.
+1. **Características del flujo**. Las variables pertenecientes a este grupo son Flow.ID, Source.IP, Source.Port, Destination.IP, Destination.Port, Protocol, Timestamp y Class. Estas variables son características que sirven principalmente para identificar de forma general al flujo, sin entrar en detalles acerca de sus paquetes.
 
-2. Características de los paquetes del flujo. Sus variables son Flow.Duration, Flow.Bytes.s y Flow.Packets.s. Como su nombre indica, este grupo está compuesto por características relacionadas con los paquetes del flujo, como su duración y el numero de bytes y paquetes por segundo (.s, per second). Hay otras variables en este grupo que distinguen entre características forward y backward. Son las siguientes:
+2. **Características de los paquetes del flujo**. Sus variables son Flow.Duration, Flow.Bytes.s, Flow.Packets.s y Down.Up.Ratio. Como su nombre indica, este grupo está compuesto por características relacionadas con los paquetes del flujo, como su duración y el numero de bytes y paquetes por segundo (.s, per second), además de la proporción entre la cantidad de datos transmitidos en dirección backward y la cantidad transmitida en dirección forward. Hay otras variables en este grupo que distinguen entre características forward y backward de forma separada. Son las siguientes:
 
-  2.1.Forward. Total.Fwd.Packets, Total.Length.of.Fwd.Packets, Fwd.Packets.s
-  2.2.Backward. Total.Backward.Packets, Total.Length.of.Bwd.Packets, Bwd.Packets.s
+  1.**Forward**. Las variables correspondientes son Total.Fwd.Packets, Total.Length.of.Fwd.Packets y Fwd.Packets.s.
+  2.**Backward**. Las variables correspondientes son Total.Backward.Packets, Total.Length.of.Bwd.Packets y Bwd.Packets.s.
   
 Dentro de esta agrupación surge otro subgrupo, ya que existen otras variables que tratan sobre características de los paquetes, pero a través de medidas estadísticas.
 
-  2.3.Características estadísticas de los paquetes del flujo. Son las siguientes: Min.Packet.Length, Max.Packet.Length, Packet.Length.Mean, Packet.Length.Std, Packet.Length.Variance, Average.Packet.Size. Puede apreciarse que los nombres de las variables contienen medidas estadísticas como la media, desviación estándar, mínimo, máximo... A su vez, existen otra subclasificación de este tipo de medidas estadísticas diferenciando entre forward y backward. 
+  3.**Características estadísticas de los paquetes del flujo**. Son las siguientes: Min.Packet.Length, Max.Packet.Length, Packet.Length.Mean, Packet.Length.Std, Packet.Length.Variance y Average.Packet.Size. Puede apreciarse que los nombres de las variables contienen medidas estadísticas como la media, desviación estándar, mínimo, máximo... A su vez, existen otra clasificación de este tipo de medidas estadísticas diferenciando entre forward y backward. 
     
-    2.3.1.Forward. Avg.Fwd.Segment.Size, Total.Length.of.Fwd.Packets, Fwd.Packet.Length.Max, Fwd.Packet.Length.Min, Fwd.Packet.Length.Mean, Fwd.Packet.Length.Std
-    2.3.2.Backward. Avg.Bwd.Segment.Size, Total.Length.of.Bwd.Packets, Bwd.Packet.Length.Max, Bwd.Packet.Length.Min,             Bwd.Packet.Length.Mean, Bwd.Packet.Length.Std
+    1.**Forward**. Sus variables son Avg.Fwd.Segment.Size, Fwd.Packet.Length.Max, Fwd.Packet.Length.Min, Fwd.Packet.Length.Mean, Fwd.Packet.Length.Std y min_seg_size_forward.
+    2.**Backward**. Sus variables son Avg.Bwd.Segment.Size, Bwd.Packet.Length.Max, Bwd.Packet.Length.Min, Bwd.Packet.Length.Mean y Bwd.Packet.Length.Std.
     
-3. Características sobre el tiempo transcurrido entre un paquete y el siguiente. Estas variables son las que contienen IAT (inter-arrival time). Aquí podemos distinguir entre tres grupos.
+3. **Características sobre el tiempo transcurrido entre un paquete y el siguiente**. Estas variables son las que contienen IAT (inter-arrival time). Aquí podemos distinguir tres grupos:
 
-  3.1. Medidas estadísticas sobre el IAT del flujo en general, sin distinguir entre forward y backward. Son Flow.IAT.Mean, Flow.IAT.Std, Flow.IAT.Max, Flow.IAT.Min.
-  3.2. Forward. Medidas sobre el IAT con característica forward. Son Fwd.IAT.Total, Fwd.IAT.Mean, Fwd.IAT.Std, Fwd.IAT.Max, Fwd.IAT.Min.
-  3.3. Backward. Medidas sobre el IAT con característica backward Son Bwd.IAT.Total, Bwd.IAT.Mean, Bwd.IAT.Std, Bwd.IAT.Max, Bwd.IAT.Min.
+  1. **Generales**. Son medidas estadísticas sobre el IAT del flujo en general, sin distinguir entre forward y backward. Son Flow.IAT.Mean, Flow.IAT.Std, Flow.IAT.Max y Flow.IAT.Min.
+  2. **Forward**. Medidas sobre el IAT con característica forward. Son Fwd.IAT.Total, Fwd.IAT.Mean, Fwd.IAT.Std, Fwd.IAT.Max y Fwd.IAT.Min.
+  3. **Backward**. Medidas sobre el IAT con característica backward. Son Bwd.IAT.Total, Bwd.IAT.Mean, Bwd.IAT.Std, Bwd.IAT.Max y Bwd.IAT.Min.
   
-4. Características estadísticas sobre la actividad del flujo. Son medidas de carácter estadístico sobre el tiempo que un flujo estuvo enviando o recibiendo datos antes de volverse inactivo. Son las variables Active.Mean, Active.Std, Active.Max, Active.Min.
+4. **Características sobre los flags**. Este grupo contiene información sobre el número de paquetes del flujo que contienen distintos flags. Las variables que pertenecen a este conjunto son FIN.Flag.Count, SYN.Flag.Count, RST.Flag.Count, PSH.Flag.Count, ACK.Flag.Count, URG.Flag.Count, CWE.Flag.Count y ECE.Flag.Count. También existen otras variables de este grupo que tienen en cuenta si la dirección es forward o backward.
+  1. **Forward**. Son Fwd.PSH.Flags y Fwd.URG.Flags.
+  2. **Backward**. Son Bwd.PSH.Flags y Bwd.URG.Flags.
 
-5. Características estadísticas sobre la inactividad del flujo. Análogo al grupo anterior, también son medidas estadísticas sobre el tiempo en el que un flujo estuvo inactivo (idle) antes de volverse activo. Son las variables Idle.Mean, Idle.Std, Idle.Max, Idle.Min.
+5. **Características sobre la longitud de la cabecera**. Representan el total de bytes usados por las cabeceras, diferenciando entre direcciones forward y backward. Se dividen por tanto en:
+  1. **Forward**. Su variable es Fwd.Header.Length.
+  2. **Backward**. Su variable es Bwd.Header.Length.
 
-6. Características sobre los flags. Este grupo contiene información sobre el número de paquetes del flujo que contienen distintos flags. Las variables que pertenecen a este conjunto son FIN.Flag.Count, SYN.Flag.Count, RST.Flag.Count, PSH.Flag.Count, ACK.Flag.Count, URG.Flag.Count, CWE.Flag.Count, ECE.Flag.Count. También existen otras variables de este grupo que tienen en cuenta si la dirección era forward o backward.
-  6.1. Forward. Son Fwd.PSH.Flags, Fwd.URG.Flags.
-  6.2. Backward. Son Bwd.PSH.Flags, Bwd.URG.Flags.
+6. **Características sobre los bulk rates de los paquetes**. Estas variables describen el número de paquetes que son transmitidos de forma masiva (bulk). Se distingue entre características forward y backward:
+  1. **Forward**. Son las variables Fwd.Avg.Bytes.Bulk, Fwd.Avg.Packets.Bulk y Fwd.Avg.Bulk.Rate.
+  2. **Backward**. Son las variables Bwd.Avg.Bytes.Bulk, Bwd.Avg.Packets.Bulk y Bwd.Avg.Bulk.Rate.
+  
+7. **Características sobre los paquetes de los subflujos o flujos secundarios**. Como su nombre indica, presentan información sobre los paquetes de este tipo de flujo. Pueden dividirse según la dirección del flujo.
+  1. **Forward**. Son Subflow.Fwd.Packets y Subflow.Fwd.Bytes.
+  2. **Backward**. Son Subflow.Bwd.Packets y Subflow.Bwd.Bytes.
 
-7. Características sobre los bulk rates de los paquetes. Estas variables describen el número de paquetes que son transmitidos de forma masiva (bulk). Se distingue entre características forward y backward.
-  7.1. Forward. Son las variables Fwd.Avg.Bytes.Bulk, Fwd.Avg.Packets.Bulk, Fwd.Avg.Bulk.Rate.
-  7.2. Backward. Son las variables Bwd.Avg.Bytes.Bulk, Bwd.Avg.Packets.Bulk, Bwd.Avg.Bulk.Rate.
+8. **Características sobre la ventana inicial del flujo**. Son el número de total de bytes transferidos, tanto en la dirección forward como en la backward, en la ventana inicial del flujo. Tenemos de nuevo la siguiente división:
+  1. **Forward**. Su única variable es Init_Win_bytes_forward.
+  2. **Backward**. Su única variable es Init_Win_bytes_backward.
   
-8. Características sobre los paquetes de los subflujos o flujos secundarios. Como su nombre indica, presentan información sobre los paquetes de este tipo de flujo. Pueden dividirse según la dirección del flujo.
-  8.1. Forward. Son Subflow.Fwd.Packets y Subflow.Fwd.Bytes.
-  8.2. Backward. Son Subflow.Bwd.Packets y Subflow.Bwd.Bytes.
-  
-9. Características sobre la longitud de la cabecera. Representan el total de bytes usados por las cabeceras, diferenciando entre direcciones forward y backward. Se dividen por tanto en:
-  9.1. Forward. La variable es Fwd.Header.Length.
-  9.2. Backward. La variable es Bwd.Header.Length.
-  
-10. Características sobre el ratio de bajada/subida.
+9. **Características sobre la carga útil**. Tratan sobre el número de paquetes que contienen al menos un 1 byte de carga útil. Solamente existe para la dirección forward. Su única variable es act_data_pkt_fwd.
 
-11. Características sobre la ventana inicial del flujo. Son el número de total de bytes transferidos, tanto en la dirección forward como en la backward, en la ventana inicial del flujo. Tenemos de nuevo la siguiente división:
-  10.1. Forward. La variable es Init_Win_bytes_forward.
-  10.2. Backward. La variable es Init_Win_bytes_backward.
-  
---Falta completar el 10, añadir act_data_pkt_fwd y min_seg_size_forward, revisar si coinciden el número de variables con las mencionadas aquí y ordenar por orden de aparición en el dataset (opcional). La variable Fwd.Header.Length.1 sobra en el dataset porque es igual a Fwd.Header.Length--
-  
+10. **Características estadísticas sobre la actividad e inactividad del flujo**. Son medidas de carácter estadístico sobre el tiempo que un flujo estuvo enviando o recibiendo datos (active) antes de volverse inactivo, y del caso contrario, sobre el tiempo que estuvo inactivo (idle) antes de volverse activo. Son las variables Active.Mean, Active.Std, Active.Max, Active.Min, Idle.Mean, Idle.Std, Idle.Max y Idle.Min.
+
+Puede observarse que la distinción entre las características forward y backward aparecen en gran cantidad de las variables del dataset. Lo que dichas características representan son la dirección en la que los datos del flujo son dirigidos, siendo forward cuando van del dispositivo de origen al de destino y backward cuando van del dispositivo de destino al de origen. Puede considerarse esta distinción relevante a priori para nuestro análisis, ya que es posible que cada dirección presente un patrón distinto en el comportamiento de sus variables, lo que puede darnos información valiosa sobre qué factores influyen mayormente en el tipo de conexión que se quiere predecir.
+
 \
+
 # Preprocesamiento de los datos. {#preprocesamiento}
 Antes de empezar con los análisis se deben preprocesar los datos. En esta sección se explicarán los preprocesamientos realizados y sus razonamientos.
 
@@ -897,11 +896,11 @@ De primeras vemos que el modelo de Bagging tiene valores tanto de F1-Score como 
 - Con el modelo de Bagging se predice correctamente el 85.98% de las conexiones benignas y el 52.29% de las conexiones keylogger. Por otro lado, de los casos predichos como benignos el 72.06% eran correctos y de los casos predichos como keylogger 72.77%.
 - Con el modelo de Red Neuronal se predice correctamente el 71.86% de las conexiones benignas y el 51.82% de las conexiones keylogger. Por otro lado, de los casos predichos como benignos el 67.75$ eran correctos y de los casos predichos como keylogger 56.51%.
 
-Con eset análisis podemos ver que el modelo de Bagging ha obtenido resultados mejores que el modelo de Red Nueronal, tanto en precisión como en sensibilidad. Aún así, prediciendo los resultados positivos (keylogger) no ha sido realmente bueno, de hecho tiene el mismo desempeño que la Red Neuronal en precisión detectando keyloggers, poco más del 50%. Esto es muy cercando a elegir al azar (50% - 50%) si una conexión es maligna o no, que sería una probabilidad del 48% de ser maligna (ya que hay un 48% de casos positivos y un 52% de negativos en el conjunto de entrenamiento), tan solo un 4% mejor. Sin embargo, la sensibilidad dle modelo de Bagging es buena tanto para los casos benignos como los keylogger.
+Con este análisis podemos ver que el modelo de Bagging ha obtenido resultados mejores que el modelo de Red Neuronal, tanto en precisión como en sensibilidad. Aún así, prediciendo los resultados positivos (keylogger) no ha sido realmente bueno; de hecho, tiene el mismo desempeño que la Red Neuronal en precisión detectando keyloggers, poco más del 50%. Esto es muy cercando a elegir al azar (50% - 50%) si una conexión es maligna o no, que sería una probabilidad del 48% de ser maligna (ya que hay un 48% de casos positivos y un 52% de negativos en el conjunto de entrenamiento), tan solo un 4% mejor. Sin embargo, la sensibilidad del modelo de Bagging es buena tanto para los casos benignos como para los keylogger.
 
 Es posible que la Red Neuronal no haya sido muy eficaz debido a que no hemos trabajado con el dataset completo, sino con un subconjunto de los datos, ya que las redes neuronales necesitan una gran cantidad de datos para aprender correctamente. También es posible que con una gran cantidad de épocas el modelo hubiera crecido lentamente, acercándose muy poco a poco a un resultado óptimo.
 
-Respecto a simplicidad, el modelo de Bagging es más simple que la red neuronal. Necesita menos cantidad de hiperparámetos y es más rápido de entrenar. Además, es más sencillo de interpretar, por lo que es preferible de utilizar en el caso de dar buenos resultados. Puede ser que este modelo haya dado mejores resultados ya que el Random Forest (el tipo de Bagigng que hemos usado) escoge aleatoriamente los predictores que va a usar, reduciendo la dimensionalidad del problema que de por sí en este dataset es muy alta. Esta reducción de la dimensionalidad y la simplicidad del modelo han podido ser factores clave para que el modelo de Bagging haya dado mejores resultados que la Red Neuronal. En el caso de haber tenido una mayor cantidad de datos, o que las variables no hubieran estado apenas correlacionadas entre sí, el modelo de Red Neuronal podría haber dado mejores resultados.
+Respecto a simplicidad, el modelo de Bagging es más simple que la red neuronal. Necesita menos cantidad de hiperparámetos y es más rápido de entrenar. Además, es más sencillo de interpretar, por lo que es preferible de utilizar en el caso de dar ambos buenos resultados. Puede ser que este modelo haya dado mejores resultados ya que el Random Forest (el tipo de Bagging que hemos usado) escoge aleatoriamente los predictores que va a usar, reduciendo la dimensionalidad del problema que de por sí en este dataset es muy alta. Esta reducción de la dimensionalidad y la simplicidad del modelo han podido ser factores clave para que el modelo de Bagging haya dado mejores resultados que la Red Neuronal. En el caso de haber tenido una mayor cantidad de datos, o que las variables no hubieran estado apenas correlacionadas entre sí, el modelo de Red Neuronal podría haber dado mejores resultados.
 
 Vamos a analizar el modelo de Bagging para ver la importancia de las variables en la predicción.
 ```{r}
