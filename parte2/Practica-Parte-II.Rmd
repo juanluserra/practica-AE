@@ -70,7 +70,6 @@ Los grupos en los que pueden dividirse las variables del dataset según su temá
 
 1. **Características del flujo**. Las variables pertenecientes a este grupo son Flow.ID, Source.IP, Source.Port, Destination.IP, Destination.Port, Protocol, Timestamp y Class. Estas variables son características que sirven principalmente para identificar de forma general al flujo, sin entrar en detalles acerca de sus paquetes.
 
-<<<<<<< HEAD
 2. **Características de los paquetes del flujo**. Como su nombre indica, este grupo está compuesto por características relacionadas con los paquetes del flujo, como su duración, su tamaño, el numero de bytes y paquetes por segundo (.s, per second), además de la proporción entre la cantidad de datos transmitidos en dirección backward y la cantidad transmitida en dirección forward. Según si se tiene en cuenta las características forward y backward o no, pueden tenerse tres subgrupos:
   1.**Generales**. Son variables de los paquetes del flujo en general, sin tener en cuenta las características forward o backward. En este subgrupo se incluyen las variables Flow.Duration, Flow.Bytes.s, Flow.Packets.s y Down.Up.Ratio. También existen otras medidas estadísticas de este subgrupo, que son Min.Packet.Length, Max.Packet.Length, Packet.Length.Mean, Packet.Length.Std, Packet.Length.Variance y Average.Packet.Size.
   2.**Forward**. Se corresponden con la característica forward. Las variables correspondientes son Total.Fwd.Packets, Total.Length.of.Fwd.Packets y Fwd.Packets.s. Además, se tienen otras variables de carácter estadístico, que son Avg.Fwd.Segment.Size, Fwd.Packet.Length.Max, Fwd.Packet.Length.Min, Fwd.Packet.Length.Mean, Fwd.Packet.Length.Std y min_seg_size_forward.
@@ -86,45 +85,26 @@ Los grupos en los que pueden dividirse las variables del dataset según su temá
   1. **Generales**. Las variables son FIN.Flag.Count, SYN.Flag.Count, RST.Flag.Count, PSH.Flag.Count, ACK.Flag.Count, URG.Flag.Count, CWE.Flag.Count y ECE.Flag.Count. 
   2. **Forward**. Son Fwd.PSH.Flags y Fwd.URG.Flags.
   3. **Backward**. Son Bwd.PSH.Flags y Bwd.URG.Flags.
-=======
-2. **Características de los paquetes del flujo**. Sus variables son Flow.Duration, Flow.Bytes.s, Flow.Packets.s y Down.Up.Ratio. Como su nombre indica, este grupo está compuesto por características relacionadas con los paquetes del flujo, como su duración y el numero de bytes y paquetes por segundo (.s, per second), además de la proporción entre la cantidad de datos transmitidos en dirección backward y la cantidad transmitida en dirección forward. Hay otras variables en este grupo que distinguen entre características forward y backward de forma separada. Son las siguientes:
-
-   1. **Forward**. Las variables correspondientes son Total.Fwd.Packets, Total.Length.of.Fwd.Packets y Fwd.Packets.s.
-   2. **Backward**. Las variables correspondientes son Total.Backward.Packets, Total.Length.of.Bwd.Packets y Bwd.Packets.s.
-   3. **Características estadísticas de los paquetes del flujo**. Son las siguientes: Min.Packet.Length, Max.Packet.Length, Packet.Length.Mean, Packet.Length.Std, Packet.Length.Variance y Average.Packet.Size. Puede apreciarse que los nombres de las variables contienen medidas estadísticas como la media, desviación estándar, mínimo, máximo... A su vez, existen otra clasificación de este tipo de medidas estadísticas diferenciando entre forward y backward. 
-       1. **Forward**. Sus variables son Avg.Fwd.Segment.Size, Fwd.Packet.Length.Max, Fwd.Packet.Length.Min, Fwd.Packet.Length.Mean, Fwd.Packet.Length.Std y min_seg_size_forward.
-       2. **Backward**. Sus variables son Avg.Bwd.Segment.Size, Bwd.Packet.Length.Max, Bwd.Packet.Length.Min, Bwd.Packet.Length.Mean y Bwd.Packet.Length.Std.
-    
-3. **Características sobre el tiempo transcurrido entre un paquete y el siguiente**. Estas variables son las que contienen IAT (inter-arrival time). Aquí podemos distinguir tres grupos:
-
-   1. **Generales**. Son medidas estadísticas sobre el IAT del flujo en general, sin distinguir entre forward y backward. Son Flow.IAT.Mean, Flow.IAT.Std, Flow.IAT.Max y Flow.IAT.Min.
-   2. **Forward**. Medidas sobre el IAT con característica forward. Son Fwd.IAT.Total, Fwd.IAT.Mean, Fwd.IAT.Std, Fwd.IAT.Max y Fwd.IAT.Min.
-   3. **Backward**. Medidas sobre el IAT con característica backward. Son Bwd.IAT.Total, Bwd.IAT.Mean, Bwd.IAT.Std, Bwd.IAT.Max y Bwd.IAT.Min.
-  
-4. **Características sobre los flags**. Este grupo contiene información sobre el número de paquetes del flujo que contienen distintos flags. Las variables que pertenecen a este conjunto son FIN.Flag.Count, SYN.Flag.Count, RST.Flag.Count, PSH.Flag.Count, ACK.Flag.Count, URG.Flag.Count, CWE.Flag.Count y ECE.Flag.Count. También existen otras variables de este grupo que tienen en cuenta si la dirección es forward o backward.
-   1. **Forward**. Son Fwd.PSH.Flags y Fwd.URG.Flags.
-   2. **Backward**. Son Bwd.PSH.Flags y Bwd.URG.Flags.
->>>>>>> b3bede68bd744764e9376ac0d7fb2c3b240eabd4
 
 5. **Características sobre la longitud de la cabecera**. Representan el total de bytes usados por las cabeceras, diferenciando entre direcciones forward y backward. Se dividen por tanto en:
-   1. **Forward**. Su variable es Fwd.Header.Length.
-   2. **Backward**. Su variable es Bwd.Header.Length.
+  1. **Forward**. Su variable es Fwd.Header.Length.
+  2. **Backward**. Su variable es Bwd.Header.Length.
 
 6. **Características sobre los bulk rates de los paquetes**. Estas variables describen el número de paquetes que son transmitidos de forma masiva (bulk). Se distingue entre características forward y backward:
-   1. **Forward**. Son las variables Fwd.Avg.Bytes.Bulk, Fwd.Avg.Packets.Bulk y Fwd.Avg.Bulk.Rate.
-   2. **Backward**. Son las variables Bwd.Avg.Bytes.Bulk, Bwd.Avg.Packets.Bulk y Bwd.Avg.Bulk.Rate.
+  1. **Forward**. Son las variables Fwd.Avg.Bytes.Bulk, Fwd.Avg.Packets.Bulk y Fwd.Avg.Bulk.Rate.
+  2. **Backward**. Son las variables Bwd.Avg.Bytes.Bulk, Bwd.Avg.Packets.Bulk y Bwd.Avg.Bulk.Rate.
   
 7. **Características sobre los paquetes de los subflujos o flujos secundarios**. Como su nombre indica, presentan información sobre los paquetes de este tipo de flujo. Pueden dividirse según la dirección del flujo.
-   1. **Forward**. Son Subflow.Fwd.Packets y Subflow.Fwd.Bytes.
-   2. **Backward**. Son Subflow.Bwd.Packets y Subflow.Bwd.Bytes.
+  1. **Forward**. Son Subflow.Fwd.Packets y Subflow.Fwd.Bytes.
+  2. **Backward**. Son Subflow.Bwd.Packets y Subflow.Bwd.Bytes.
 
 8. **Características sobre la ventana inicial del flujo**. Son el número de total de bytes transferidos, tanto en la dirección forward como en la backward, en la ventana inicial del flujo. Tenemos de nuevo la siguiente división:
-   1. **Forward**. Su única variable es Init_Win_bytes_forward.
-   2. **Backward**. Su única variable es Init_Win_bytes_backward.
+  1. **Forward**. Su única variable es Init_Win_bytes_forward.
+  2. **Backward**. Su única variable es Init_Win_bytes_backward.
+  
+9. **Características sobre la carga útil**. Tratan sobre el número de paquetes que contienen al menos un 1 byte de carga útil. Solamente existe para la dirección forward. Su única variable es act_data_pkt_fwd.
 
-9.   **Características sobre la carga útil**. Tratan sobre el número de paquetes que contienen al menos un 1 byte de carga útil. Solamente existe para la dirección forward. Su única variable es act_data_pkt_fwd.
-
-10.  **Características estadísticas sobre la actividad e inactividad del flujo**. Son medidas de carácter estadístico sobre el tiempo que un flujo estuvo enviando o recibiendo datos (active) antes de volverse inactivo, y del caso contrario, sobre el tiempo que estuvo inactivo (idle) antes de volverse activo. Son las variables Active.Mean, Active.Std, Active.Max, Active.Min, Idle.Mean, Idle.Std, Idle.Max y Idle.Min.
+10. **Características estadísticas sobre la actividad e inactividad del flujo**. Son medidas de carácter estadístico sobre el tiempo que un flujo estuvo enviando o recibiendo datos (active) antes de volverse inactivo, y del caso contrario, sobre el tiempo que estuvo inactivo (idle) antes de volverse activo. Son las variables Active.Mean, Active.Std, Active.Max, Active.Min, Idle.Mean, Idle.Std, Idle.Max y Idle.Min.
 
 Puede observarse que la distinción entre las características forward y backward aparecen en gran cantidad de las variables del dataset. Lo que dichas características representan son la dirección en la que los datos del flujo son dirigidos, siendo forward cuando van del dispositivo de origen al de destino y backward cuando van del dispositivo de destino al de origen. Puede considerarse esta distinción relevante a priori para nuestro análisis, ya que es posible que cada dirección presente un patrón distinto en el comportamiento de sus variables, lo que puede darnos información valiosa sobre qué factores influyen mayormente en el tipo de conexión que se quiere predecir.
 
@@ -200,7 +180,7 @@ Ahora, eliminamos las filas duplicadas.
 mydf <- mydf[!duplicated(mydf), ]
 ```
 
-Vamos a eliminar las columnas con desviación estándar cero. Para ello, psaremos a numérico todas las variables que no sean claramente caracteres.
+Vamos a eliminar las columnas con desviación estándar cero. Para ello, pasaremos a numérico todas las variables que no sean claramente caracteres.
 ```{r, eval = FALSE}
 # Pasamos a numérico las variables que les corresponde
 mydf$Packet.Length.Std <- as.numeric(mydf$Packet.Length.Std)
@@ -270,6 +250,8 @@ table(mydf.sample$Class) / nrow(mydf.sample) * 100
 # Porcentaje de valores positivos y negativos en el dataset original
 table(mydf.original$Class) / nrow(mydf.original) * 100
 ```
+
+Vemos que las proporciones de positivos y negativos en ambos datasets son prácticamente iguales, por lo que podemos comenzar nuestro análisis con este último dataset sampleado.
 
 \
 
@@ -353,9 +335,9 @@ dev.off()
 
 ![](biplot.png)
 
-Se puede ver en la imagen deñ biplot que tenemos demasiados predictores y demasiados valores, no se puede sacar nada en claro. Además, como PC1 y PC2 explican solo el 35.65% de la varianza el biplot tampoco sería representativo.
+Se puede ver en la imagen del biplot que tenemos demasiados predictores y demasiados valores; no se puede sacar nada en claro. Además, como PC1 y PC2 explican solo el 35.65% de la varianza, el biplot tampoco sería representativo.
 
-Por todo esto, podemos ver que la elaboración de un modelo de clasificación que identifique conexiones de keystrokes va a ser un problema complicado. Tenemos muchos predictores y ver las relaciones entre ellos no va a ser una tarea sencilla. Si intentásemos reducir la dimensionalidad del problea con PCA como mucho podríamos reducir a 11 dimensiones, lo cual sigue siendo una gan cantidad de variables.
+Por todo esto, podemos ver que la elaboración de un modelo de clasificación que identifique conexiones de keystrokes va a ser un problema complicado. Tenemos muchos predictores y ver las relaciones entre ellos no va a ser una tarea sencilla. Si intentásemos reducir la dimensionalidad del problema con PCA, como mucho podríamos reducir a 11 dimensiones, lo cual sigue siendo una gran cantidad de variables.
 
 \
 
@@ -379,7 +361,7 @@ alias.matrix
 
 Vemos que hay variables que han generado aliasing en el modelo, lo que significa que están perfectamente correlacionadas con otras variables (variables de filas con variables de columnas). El modelo de regesión logística directamente no tendrá en cuenta estas variables. 
 
-Una vez tenemos el modelo creado, realizamos unas preddicciones. Con estas predicciones se harán unas tablas de confusión para ver cómo se comporta el modelo.
+Una vez tenemos el modelo creado, realizamos unas predicciones. Con estas predicciones se harán unas tablas de confusión para ver cómo se comporta el modelo.
 ```{r}
 # Realizamos las predicciones
 logr.probs <- predict(logr, type = "response")
@@ -407,7 +389,7 @@ Analizando la tabla de confusión vemos que el modelo no es capaz de predecir co
 - De las conexiones que se han predicho como benignas, solo el 16.4% eran realmente benignas, dejando una tasa de falso positivo del 83.6%.
 - De las conexiones que se han predicho como keylogger, solo el 36.3% eran realmente keylogger, dejando una tasa de falso negativo del 63.7%.
   
-Con este análisis podemos concluir que el modelo es nefasto prediciendo conexiones benignas. Prediciendo conexiones keylogger es mejor, categorizando bien el 79% de las conexiones malignas del dataset. Sin embargo, la sensibilidad del modelo es muy mala, como mucho del 36.3% en los keyloggers, por lo que el modelo falla mucho a la hora de categorizar. Por todo esto, no es viable hacer un modelo de regresión para este problema.
+Con este análisis podemos concluir que el modelo es nefasto prediciendo conexiones benignas. Prediciendo conexiones keylogger es mejor, categorizando bien el 79% de las conexiones malignas del dataset. Sin embargo, la sensibilidad del modelo es muy mala, como mucho del 36.3% en los keyloggers, por lo que el modelo falla mucho a la hora de categorizar. Por todo esto, no es viable usar un modelo de regresión para este problema.
 
 \
 
@@ -443,7 +425,7 @@ Los hiperparámetros que utiliza el modelo Random Forest son los siguientes:
 
 - $mtry$: Número de predictores que se seleccionan aleatoriamente en cada nodo para elegir la división óptima. El valor de $mtry$ que suele usarse en el caso de la clasificación es $\sqrt{p}$, siendo $p$ el número total de predictores. Por lo tanto, probaremos con $mtry = \sqrt{p} - 1$, $mtry = \sqrt{p}$ y $mtry = \sqrt{p} + 1$.
 - $ntree$: Número de árboles que se construyen. A mayor cantidad de árboles se reduce la varianza del modelo, pero aumenta el tiempo de computación. Probaremos con $ntree = 300, 500, 700$.
-- $nsizes$: Número mínimo de elementos que puede tener un nodo. A menor tamaño, más complejos se harán los árboles. Probaremos con $nsizes = 10, 50, 100$.
+- $nodesize$: Número mínimo de elementos que puede tener un nodo. A menor tamaño, más complejos se harán los árboles. Probaremos con $nodesize = 10, 50, 100$.
 
 \
 
@@ -660,12 +642,13 @@ print(confusion_matrix_bagging)
 \
 
 ## Explicación del modelo
-Dado que el número de datos que tenemos disponibles para entrenar el modelo elegido puede considerarse relativamente alto, una buena opción a utilizar es la red neuronal, la cual mejora su rendimiento cuando dispone de muchos datos. Además, tanto la alta dimensionalidad como la aparente complejidad en las relaciones entre la variable de salida y las de entrada, pueden ser idóneas para un modelo especializado en captar relaciones no lineales, como es el de la red neuronal. En este modelo, son tres los posibles hiperparámetros entre los que elegir, siendo los dos primeros relativos a la propia arquitectura de la red:
+Dado que el número de datos que tenemos disponibles para entrenar el modelo elegido puede considerarse relativamente alto, una buena opción a utilizar es la red neuronal, la cual mejora su rendimiento cuando dispone de muchos datos. Además, tanto la alta dimensionalidad como la aparente complejidad en las relaciones entre la variable de salida y las de entrada, pueden ser idóneas para un modelo especializado en captar relaciones no lineales, como es el de la red neuronal. En este modelo, son cuatro los posibles hiperparámetros entre los que elegir, siendo los tres primeros relativos a la propia arquitectura de la red:
 
 - $units$ en la primera capa. Se elegirá entre los valores $units = 16, 32$. Con más neuronas en la capa, el modelo amplía en complejidad, lo que puede ayudar con la no linealidad de nuestro problema, pero también puede conducir a un sobreajuste, además de que aumenta el tiempo de entrenamiento.
 - $units$ en la segunda capa. Los valores posibles son  $units = 0, 16, 32$. El primer valor indica que esta capa no es incluida directamente en el modelo, por lo que solo se construiría la red con la primera capa definida anteriormente.
-- $epochs$. Es el número de veces que, durante el proceso de entrenamiento, la red ha usado el conjunto total de datos disponibles para entrenar. Cuanto mayor es, más permite al modelo ajustarse a dichos datos y minimizar el error de entrenamiento. Sin embargo, esto conlleva un inconveniente, ya que si el modelo se ajusta demasiado, puede ocurrir overfitting y que no generalice bien a los datos de test. Es por ello que resulta necesario controlar el número de épocas como hiperparámetro. Los valores probados serán $epochs = 50, 100
 - $dropout$. Es un método de regularización que consiste en desconectar aleatoriamente un porcentaje de las neuronas de la red durante el entrenamiento y así se evita el sobreajuste a los datos de entrenamiento. Los valores probados serán $dropout = 0.1, 0.5$.
+- $epochs$. Es el número de veces que, durante el proceso de entrenamiento, la red ha usado el conjunto total de datos disponibles para entrenar. Cuanto mayor es, más permite al modelo ajustarse a dichos datos y minimizar el error de entrenamiento. Sin embargo, esto conlleva un inconveniente, ya que si el modelo se ajusta demasiado, puede ocurrir overfitting y que no generalice bien a los datos de test. Es por ello que resulta necesario controlar el número de épocas como hiperparámetro. Los valores probados serán $epochs = 50, 100$.
+
 
 Hay otros aspectos de la arquitectura de la red a tener en cuenta. Las funciones de activación que se tendrán en todas las neuronas será la misma: la función $activation = "relu"$, la cual dota de no linealidad al modelo. Para la capa de salida, se usarán dos neuronas, una por cada clase distinta, con función de activación $activation = "softmax"$, que produce como salida la probabilidad de que un vector de entrada pertenezca a su correspondiente clase.
 
@@ -676,7 +659,7 @@ Dado que en el subapartado 'Preparación de los datos de entrenamiento, prueba y
 \
 
 ## Proceso de validación cruzada
-El proceso de validación cruzada es análogo al del bagging, pero adaptado al algortimo de la red neuronal y sus hiperparámetros.
+El proceso de validación cruzada es análogo al del bagging, pero adaptado al algoritmo de la red neuronal y sus hiperparámetros.
 
 Primero tenemos que pasar todas las variables a numéricas y escalarlas (excepto la variable "Class").
 ```{r}
@@ -705,7 +688,7 @@ v <- expand.grid(values.nneurons1, values.nneurons2, values.dropout.rate, values
 colnames(v) <- c("Units Layer 1", "Units Layer 2", "Dropout Rate", "Epocas")
 ```
 
-Creamos un cluster con `doParallel` para realizar los cálculos en paralelo de la validación cruzada.
+Creamos un cluster con `doParallel` para realizar los cálculos en paralelo de la validación cruzada. Dado que la proporción de clases en el conjunto de entrenamiento está algo desbalanceada, arreglaremos esto usando en la función `fit` el parámetro $class_weight$, que compensa esta desigualdad en las proporciones dando un peso más alto a la clase Keylogger, cuyo número de muestras en el conjunto de entrenamiento es menor que el de la clase Benign.
 ```{r, eval = FALSE}
 # Creamos un cluster para realizar los cálculos en paralelo
 cl <- makeCluster(detectCores() - 1) # Dejamos un núcleo libre
@@ -946,11 +929,11 @@ De primeras vemos que el modelo de Bagging tiene valores tanto de F1-Score como 
 - Con el modelo de Bagging se predice correctamente el 88.06% de las conexiones benignas y el 50.96% de las conexiones keylogger del dataset. Por otro lado, de los casos predichos como benignos el 72.07% eran correctos y de los casos predichos como keylogger 76.04%.
 - Con el modelo de Red Neuronal se predice correctamente el 76.73% de las conexiones benignas y el 48.82% de las conexiones keylogger del dataset. Por otro lado, de los casos predichos como benignos el 68.30% eran correctos y de los casos predichos como keylogger 59.35%.
 
-Con eset análisis podemos ver que el modelo de Bagging ha obtenido resultados mejores que el modelo de Red Nueronal, tanto en precisión como en sensibilidad. Aún así, prediciendo los resultados positivos (keylogger) no ha sido realmente bueno, solo un poco más del 50%. Esto es muy cercando a elegir al azar (50% - 50%) si una conexión es maligna o no, que obtendría una probabilidad del 48% de ser maligna (ya que hay un 48% de casos positivos y un 52% de negativos en el conjunto de entrenamiento), tan solo un 3% mejor. Sin embargo, la sensibilidad del modelo de Bagging es buena tanto para los casos benignos como los keylogger, siendo superior al 70% en ambos casos.
+Con eset análisis podemos ver que el modelo de Bagging ha obtenido resultados mejores que el modelo de Red Neuronal, tanto en precisión como en sensibilidad. Aún así, prediciendo los resultados positivos (keylogger) no ha sido realmente bueno, solo un poco más del 50%. Esto es muy cercando a elegir al azar (50% - 50%) si una conexión es maligna o no, que obtendría una probabilidad del 48% de ser maligna (ya que hay un 48% de casos positivos y un 52% de negativos en el conjunto de entrenamiento), tan solo un 3% mejor. Sin embargo, la sensibilidad del modelo de Bagging es buena tanto para los casos benignos como los keylogger, siendo superior al 70% en ambos casos.
 
 Es posible que la Red Neuronal no haya sido muy eficaz debido a que no hemos trabajado con el dataset completo, sino con un subconjunto de los datos, ya que las redes neuronales necesitan una gran cantidad de datos para aprender correctamente. También es posible que con una gran cantidad de épocas el modelo hubiera crecido lentamente, acercándose muy poco a poco a un resultado óptimo.
 
-Respecto a simplicidad, el modelo de Bagging es más simple que la red neuronal. Necesita menos cantidad de hiperparámetos y es más rápido de entrenar. Además, es más sencillo de interpretar, por lo que es preferible de utilizar frente a la red neuronal si los resultados son parecidos. Puede ser que este modelo haya dado mejores resultados ya que el Random Forest (el tipo de Bagigng que hemos usado) escoge aleatoriamente los predictores que va a usar, reduciendo la dimensionalidad del problema que de por sí en este dataset es muy alta. Esta reducción de la dimensionalidad y la simplicidad del modelo han podido ser factores clave para que el modelo de Bagging haya dado mejores resultados que la Red Neuronal. En el caso de haber tenido una mayor cantidad de datos, o que las variables no hubieran estado apenas correlacionadas entre sí, el modelo de Red Neuronal podría haber sido mejor.
+Respecto a simplicidad, el modelo de Bagging es más simple que la red neuronal. Necesita menos cantidad de hiperparámetos y es más rápido de entrenar. Además, es más sencillo de interpretar, por lo que es preferible de utilizar frente a la red neuronal si los resultados son parecidos. Puede ser que este modelo haya dado mejores resultados ya que el Random Forest (el tipo de Bagging que hemos usado) escoge aleatoriamente los predictores que va a usar, reduciendo la dimensionalidad del problema que de por sí en este dataset es muy alta. Esta reducción de la dimensionalidad y la simplicidad del modelo han podido ser factores clave para que el modelo de Bagging haya dado mejores resultados que la Red Neuronal. En el caso de haber tenido una mayor cantidad de datos, o que las variables no hubieran estado apenas correlacionadas entre sí, el modelo de Red Neuronal podría haber sido mejor.
 
 Vamos a analizar el modelo de Bagging para ver la importancia de las variables en la predicción.
 ```{r}
