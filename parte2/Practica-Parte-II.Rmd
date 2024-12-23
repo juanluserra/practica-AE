@@ -56,7 +56,7 @@ Para que el cuaderno se pueda compilar rápidamente, vamos a cargar previamente 
 \
 
 # Exploración del dataset y agrupación de variables. {#agrupacion}
-En esta sección analizaremos las variables del dataset y las agruparemos por temáticas. Se describirá el significado de cada grupo de características identificado.
+En esta sección analizaremos las variables del dataset y las agruparemos por temáticas. Se describirá el significado de cada grupo de características identificado. Toda la información acerca de las variables se ha extraído del documento `'ReadMe.txt` del repositorio CICFlowMeter. Dicho documento se encuentra disponible en [CICFlowMeter/ReadMe.txt] (https://github.com/ahlashkari/CICFlowMeter/blob/master/ReadMe.txt).
 
 ```{r}
 # Leemos el dataset
@@ -68,12 +68,16 @@ str(mydf)
 
 Los grupos en los que pueden dividirse las variables del dataset según su temática son los siguientes:
 
+
 1. **Características del flujo**. Las variables pertenecientes a este grupo son Flow.ID, Source.IP, Source.Port, Destination.IP, Destination.Port, Protocol, Timestamp y Class. Estas variables son características que sirven principalmente para identificar de forma general al flujo, sin entrar en detalles acerca de sus paquetes.
 
+
 2. **Características de los paquetes del flujo**. Como su nombre indica, este grupo está compuesto por características relacionadas con los paquetes del flujo, como su duración, su tamaño, el numero de bytes y paquetes por segundo (.s, per second), además de la proporción entre la cantidad de datos transmitidos en dirección backward y la cantidad transmitida en dirección forward. Según si se tiene en cuenta las características forward y backward o no, pueden tenerse tres subgrupos:
+
   1.**Generales**. Son variables de los paquetes del flujo en general, sin tener en cuenta las características forward o backward. En este subgrupo se incluyen las variables Flow.Duration, Flow.Bytes.s, Flow.Packets.s y Down.Up.Ratio. También existen otras medidas estadísticas de este subgrupo, que son Min.Packet.Length, Max.Packet.Length, Packet.Length.Mean, Packet.Length.Std, Packet.Length.Variance y Average.Packet.Size.
   2.**Forward**. Se corresponden con la característica forward. Las variables correspondientes son Total.Fwd.Packets, Total.Length.of.Fwd.Packets y Fwd.Packets.s. Además, se tienen otras variables de carácter estadístico, que son Avg.Fwd.Segment.Size, Fwd.Packet.Length.Max, Fwd.Packet.Length.Min, Fwd.Packet.Length.Mean, Fwd.Packet.Length.Std y min_seg_size_forward.
   3.**Backward**. Se corresponden con la característica backward. Las variables correspondientes son Total.Backward.Packets, Total.Length.of.Bwd.Packets y Bwd.Packets.s. Se tienen también las siguientes medidas estadísticas: Avg.Bwd.Segment.Size, Bwd.Packet.Length.Max, Bwd.Packet.Length.Min, Bwd.Packet.Length.Mean y Bwd.Packet.Length.Std.
+  
     
 3. **Características sobre el tiempo transcurrido entre un paquete y el siguiente**. Estas variables son las que contienen IAT (inter-arrival time), y como su nombre indica, son variables, casi todas estadísticas, acerca del tiempo transcurrido entre dos paquetes consecutivos. Aquí podemos distinguir tres grupos:
 
@@ -81,30 +85,43 @@ Los grupos en los que pueden dividirse las variables del dataset según su temá
   2. **Forward**. Medidas sobre el IAT con característica forward. Sus variables son Fwd.IAT.Total, Fwd.IAT.Mean, Fwd.IAT.Std, Fwd.IAT.Max y Fwd.IAT.Min.
   3. **Backward**. Medidas sobre el IAT con característica backward. Sus variables son Bwd.IAT.Total, Bwd.IAT.Mean, Bwd.IAT.Std, Bwd.IAT.Max y Bwd.IAT.Min.
   
+  
 4. **Características sobre los flags**. Este grupo contiene información sobre el número de paquetes del flujo que contienen distintos flags. Existen tanto variables generales como variables que tienen en cuenta si la dirección es forward o backward.
+
   1. **Generales**. Las variables son FIN.Flag.Count, SYN.Flag.Count, RST.Flag.Count, PSH.Flag.Count, ACK.Flag.Count, URG.Flag.Count, CWE.Flag.Count y ECE.Flag.Count. 
   2. **Forward**. Son Fwd.PSH.Flags y Fwd.URG.Flags.
   3. **Backward**. Son Bwd.PSH.Flags y Bwd.URG.Flags.
 
+
 5. **Características sobre la longitud de la cabecera**. Representan el total de bytes usados por las cabeceras, diferenciando entre direcciones forward y backward. Se dividen por tanto en:
+
   1. **Forward**. Su variable es Fwd.Header.Length.
   2. **Backward**. Su variable es Bwd.Header.Length.
 
+
 6. **Características sobre los bulk rates de los paquetes**. Estas variables describen el número de paquetes que son transmitidos de forma masiva (bulk). Se distingue entre características forward y backward:
+
   1. **Forward**. Son las variables Fwd.Avg.Bytes.Bulk, Fwd.Avg.Packets.Bulk y Fwd.Avg.Bulk.Rate.
   2. **Backward**. Son las variables Bwd.Avg.Bytes.Bulk, Bwd.Avg.Packets.Bulk y Bwd.Avg.Bulk.Rate.
   
+  
 7. **Características sobre los paquetes de los subflujos o flujos secundarios**. Como su nombre indica, presentan información sobre los paquetes de este tipo de flujo. Pueden dividirse según la dirección del flujo.
+
   1. **Forward**. Son Subflow.Fwd.Packets y Subflow.Fwd.Bytes.
   2. **Backward**. Son Subflow.Bwd.Packets y Subflow.Bwd.Bytes.
 
+
 8. **Características sobre la ventana inicial del flujo**. Son el número de total de bytes transferidos, tanto en la dirección forward como en la backward, en la ventana inicial del flujo. Tenemos de nuevo la siguiente división:
+
   1. **Forward**. Su única variable es Init_Win_bytes_forward.
   2. **Backward**. Su única variable es Init_Win_bytes_backward.
   
+  
 9. **Características sobre la carga útil**. Tratan sobre el número de paquetes que contienen al menos un 1 byte de carga útil. Solamente existe para la dirección forward. Su única variable es act_data_pkt_fwd.
 
+
 10. **Características estadísticas sobre la actividad e inactividad del flujo**. Son medidas de carácter estadístico sobre el tiempo que un flujo estuvo enviando o recibiendo datos (active) antes de volverse inactivo, y del caso contrario, sobre el tiempo que estuvo inactivo (idle) antes de volverse activo. Son las variables Active.Mean, Active.Std, Active.Max, Active.Min, Idle.Mean, Idle.Std, Idle.Max y Idle.Min.
+
 
 Puede observarse que la distinción entre las características forward y backward aparecen en gran cantidad de las variables del dataset. Lo que dichas características representan son la dirección en la que los datos del flujo son dirigidos, siendo forward cuando van del dispositivo de origen al de destino y backward cuando van del dispositivo de destino al de origen. Puede considerarse esta distinción relevante a priori para nuestro análisis, ya que es posible que cada dirección presente un patrón distinto en el comportamiento de sus variables, lo que puede darnos información valiosa sobre qué factores influyen mayormente en el tipo de conexión que se quiere predecir.
 
@@ -642,7 +659,7 @@ print(confusion_matrix_bagging)
 \
 
 ## Explicación del modelo
-Dado que el número de datos que tenemos disponibles para entrenar el modelo elegido puede considerarse relativamente alto, una buena opción a utilizar es la red neuronal, la cual mejora su rendimiento cuando dispone de muchos datos. Además, tanto la alta dimensionalidad como la aparente complejidad en las relaciones entre la variable de salida y las de entrada, pueden ser idóneas para un modelo especializado en captar relaciones no lineales, como es el de la red neuronal. En este modelo, son cuatro los posibles hiperparámetros entre los que elegir, siendo los tres primeros relativos a la propia arquitectura de la red:
+Dado que el número de datos que tenemos disponibles para entrenar el modelo elegido puede considerarse relativamente alto, una buena opción a utilizar es la red neuronal, la cual mejora su rendimiento cuando dispone de muchos datos. Además, tanto la alta dimensionalidad como la aparente complejidad en las relaciones entre la variable de salida y las de entrada, pueden ser idóneas para un modelo especializado en captar relaciones no lineales, como es el de la red neuronal. En este modelo, son cuatro los hiperparámetros elegidos, siendo los tres primeros relativos a la propia arquitectura de la red:
 
 - $units$ en la primera capa. Se elegirá entre los valores $units = 16, 32$. Con más neuronas en la capa, el modelo amplía en complejidad, lo que puede ayudar con la no linealidad de nuestro problema, pero también puede conducir a un sobreajuste, además de que aumenta el tiempo de entrenamiento.
 - $units$ en la segunda capa. Los valores posibles son  $units = 0, 16, 32$. El primer valor indica que esta capa no es incluida directamente en el modelo, por lo que solo se construiría la red con la primera capa definida anteriormente.
