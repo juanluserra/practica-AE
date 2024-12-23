@@ -30,7 +30,7 @@ En este trabajo se va a realizar un análisis de un dataset que contiene informa
 8. [Análisis de resultados](#analisis-resultados)
 
 Antes de empezar con el trabajo tenemos que cargar las librerías necesarias, configurar el directorio de trabajo y seleccionar una semilla aleatoria para todo el cuaderno.
-```{r, results = "hide", message = FALSE, warning = FALSE}
+```{r configuracion inicial, results = "hide", message = FALSE, warning = FALSE}
 # Seleccioamos el directorio actual como directorio de trabajo
 # Si estamos compilando no lo hacemos para que no de error la compilación
 if (interactive()) {
@@ -58,7 +58,7 @@ Para que el cuaderno se pueda compilar rápidamente, vamos a cargar previamente 
 # Exploración del dataset y agrupación de variables. {#agrupacion}
 En esta sección analizaremos las variables del dataset y las agruparemos por temáticas. Se describirá el significado de cada grupo de características identificado.
 
-```{r}
+```{r string dataset original}
 # Leemos el dataset
 mydf <- read.csv("Keylogger_Detection.csv", header = TRUE, sep = ",")
 
@@ -71,38 +71,38 @@ Los grupos en los que pueden dividirse las variables del dataset según su temá
 1. **Características del flujo**. Las variables pertenecientes a este grupo son Flow.ID, Source.IP, Source.Port, Destination.IP, Destination.Port, Protocol, Timestamp y Class. Estas variables son características que sirven principalmente para identificar de forma general al flujo, sin entrar en detalles acerca de sus paquetes.
 
 2. **Características de los paquetes del flujo**. Como su nombre indica, este grupo está compuesto por características relacionadas con los paquetes del flujo, como su duración, su tamaño, el numero de bytes y paquetes por segundo (.s, per second), además de la proporción entre la cantidad de datos transmitidos en dirección backward y la cantidad transmitida en dirección forward. Según si se tiene en cuenta las características forward y backward o no, pueden tenerse tres subgrupos:
-  1.**Generales**. Son variables de los paquetes del flujo en general, sin tener en cuenta las características forward o backward. En este subgrupo se incluyen las variables Flow.Duration, Flow.Bytes.s, Flow.Packets.s y Down.Up.Ratio. También existen otras medidas estadísticas de este subgrupo, que son Min.Packet.Length, Max.Packet.Length, Packet.Length.Mean, Packet.Length.Std, Packet.Length.Variance y Average.Packet.Size.
-  2.**Forward**. Se corresponden con la característica forward. Las variables correspondientes son Total.Fwd.Packets, Total.Length.of.Fwd.Packets y Fwd.Packets.s. Además, se tienen otras variables de carácter estadístico, que son Avg.Fwd.Segment.Size, Fwd.Packet.Length.Max, Fwd.Packet.Length.Min, Fwd.Packet.Length.Mean, Fwd.Packet.Length.Std y min_seg_size_forward.
-  3.**Backward**. Se corresponden con la característica backward. Las variables correspondientes son Total.Backward.Packets, Total.Length.of.Bwd.Packets y Bwd.Packets.s. Se tienen también las siguientes medidas estadísticas: Avg.Bwd.Segment.Size, Bwd.Packet.Length.Max, Bwd.Packet.Length.Min, Bwd.Packet.Length.Mean y Bwd.Packet.Length.Std.
+   1. **Generales**. Son variables de los paquetes del flujo en general, sin tener en cuenta las características forward o backward. En este subgrupo se incluyen las variables Flow.Duration, Flow.Bytes.s, Flow.Packets.s y Down.Up.Ratio. También existen otras medidas estadísticas de este subgrupo, que son Min.Packet.Length, Max.Packet.Length, Packet.Length.Mean, Packet.Length.Std, Packet.Length.Variance y Average.Packet.Size.
+   2. **Forward**. Se corresponden con la característica forward. Las variables correspondientes son Total.Fwd.Packets, Total.Length.of.Fwd.Packets y Fwd.Packets.s. Además, se tienen otras variables de carácter estadístico, que son Avg.Fwd.Segment.Size, Fwd.Packet.Length.Max, Fwd.Packet.Length.Min, Fwd.Packet.Length.Mean, Fwd.Packet.Length.Std y min_seg_size_forward.
+   3. **Backward**. Se corresponden con la característica backward. Las variables correspondientes son Total.Backward.Packets, Total.Length.of.Bwd.Packets y Bwd.Packets.s. Se tienen también las siguientes medidas estadísticas: Avg.Bwd.Segment.Size, Bwd.Packet.Length.Max, Bwd.Packet.Length.Min, Bwd.Packet.Length.Mean y Bwd.Packet.Length.Std.
     
 3. **Características sobre el tiempo transcurrido entre un paquete y el siguiente**. Estas variables son las que contienen IAT (inter-arrival time), y como su nombre indica, son variables, casi todas estadísticas, acerca del tiempo transcurrido entre dos paquetes consecutivos. Aquí podemos distinguir tres grupos:
 
-  1. **Generales**. Son medidas estadísticas sobre el IAT del flujo en general, sin distinguir entre forward y backward. Sus variables son Flow.IAT.Mean, Flow.IAT.Std, Flow.IAT.Max y Flow.IAT.Min.
-  2. **Forward**. Medidas sobre el IAT con característica forward. Sus variables son Fwd.IAT.Total, Fwd.IAT.Mean, Fwd.IAT.Std, Fwd.IAT.Max y Fwd.IAT.Min.
-  3. **Backward**. Medidas sobre el IAT con característica backward. Sus variables son Bwd.IAT.Total, Bwd.IAT.Mean, Bwd.IAT.Std, Bwd.IAT.Max y Bwd.IAT.Min.
+   1. **Generales**. Son medidas estadísticas sobre el IAT del flujo en general, sin distinguir entre forward y backward. Sus variables son Flow.IAT.Mean, Flow.IAT.Std, Flow.IAT.Max y Flow.IAT.Min.
+   2. **Forward**. Medidas sobre el IAT con característica forward. Sus variables son Fwd.IAT.Total, Fwd.IAT.Mean, Fwd.IAT.Std, Fwd.IAT.Max y Fwd.IAT.Min.
+   3. **Backward**. Medidas sobre el IAT con característica backward. Sus variables son Bwd.IAT.Total, Bwd.IAT.Mean, Bwd.IAT.Std, Bwd.IAT.Max y Bwd.IAT.Min.
   
 4. **Características sobre los flags**. Este grupo contiene información sobre el número de paquetes del flujo que contienen distintos flags. Existen tanto variables generales como variables que tienen en cuenta si la dirección es forward o backward.
-  1. **Generales**. Las variables son FIN.Flag.Count, SYN.Flag.Count, RST.Flag.Count, PSH.Flag.Count, ACK.Flag.Count, URG.Flag.Count, CWE.Flag.Count y ECE.Flag.Count. 
-  2. **Forward**. Son Fwd.PSH.Flags y Fwd.URG.Flags.
-  3. **Backward**. Son Bwd.PSH.Flags y Bwd.URG.Flags.
+   1. **Generales**. Las variables son FIN.Flag.Count, SYN.Flag.Count, RST.Flag.Count, PSH.Flag.Count, ACK.Flag.Count, URG.Flag.Count, CWE.Flag.Count y ECE.Flag.Count. 
+   2. **Forward**. Son Fwd.PSH.Flags y Fwd.URG.Flags.
+   3. **Backward**. Son Bwd.PSH.Flags y Bwd.URG.Flags.
 
 5. **Características sobre la longitud de la cabecera**. Representan el total de bytes usados por las cabeceras, diferenciando entre direcciones forward y backward. Se dividen por tanto en:
-  1. **Forward**. Su variable es Fwd.Header.Length.
-  2. **Backward**. Su variable es Bwd.Header.Length.
+   1. **Forward**. Su variable es Fwd.Header.Length.
+   2. **Backward**. Su variable es Bwd.Header.Length.
 
 6. **Características sobre los bulk rates de los paquetes**. Estas variables describen el número de paquetes que son transmitidos de forma masiva (bulk). Se distingue entre características forward y backward:
-  1. **Forward**. Son las variables Fwd.Avg.Bytes.Bulk, Fwd.Avg.Packets.Bulk y Fwd.Avg.Bulk.Rate.
-  2. **Backward**. Son las variables Bwd.Avg.Bytes.Bulk, Bwd.Avg.Packets.Bulk y Bwd.Avg.Bulk.Rate.
+   1. **Forward**. Son las variables Fwd.Avg.Bytes.Bulk, Fwd.Avg.Packets.Bulk y Fwd.Avg.Bulk.Rate.
+   2. **Backward**. Son las variables Bwd.Avg.Bytes.Bulk, Bwd.Avg.Packets.Bulk y Bwd.Avg.Bulk.Rate.
   
-7. **Características sobre los paquetes de los subflujos o flujos secundarios**. Como su nombre indica, presentan información sobre los paquetes de este tipo de flujo. Pueden dividirse según la dirección del flujo.
-  1. **Forward**. Son Subflow.Fwd.Packets y Subflow.Fwd.Bytes.
-  2. **Backward**. Son Subflow.Bwd.Packets y Subflow.Bwd.Bytes.
+7.  **Características sobre los paquetes de los subflujos o flujos secundarios**. Como su nombre indica, presentan información sobre los paquetes de este tipo de flujo. Pueden dividirse según la dirección del flujo.
+    1.  **Forward**. Son Subflow.Fwd.Packets y Subflow.Fwd.Bytes.
+    2.  **Backward**. Son Subflow.Bwd.Packets y Subflow.Bwd.Bytes.
 
-8. **Características sobre la ventana inicial del flujo**. Son el número de total de bytes transferidos, tanto en la dirección forward como en la backward, en la ventana inicial del flujo. Tenemos de nuevo la siguiente división:
-  1. **Forward**. Su única variable es Init_Win_bytes_forward.
-  2. **Backward**. Su única variable es Init_Win_bytes_backward.
+8.  **Características sobre la ventana inicial del flujo**. Son el número de total de bytes transferidos, tanto en la dirección forward como en la backward, en la ventana inicial del flujo. Tenemos de nuevo la siguiente división:
+    1.  **Forward**. Su única variable es Init_Win_bytes_forward.
+    2.  **Backward**. Su única variable es Init_Win_bytes_backward.
   
-9. **Características sobre la carga útil**. Tratan sobre el número de paquetes que contienen al menos un 1 byte de carga útil. Solamente existe para la dirección forward. Su única variable es act_data_pkt_fwd.
+9.  **Características sobre la carga útil**. Tratan sobre el número de paquetes que contienen al menos un 1 byte de carga útil. Solamente existe para la dirección forward. Su única variable es act_data_pkt_fwd.
 
 10. **Características estadísticas sobre la actividad e inactividad del flujo**. Son medidas de carácter estadístico sobre el tiempo que un flujo estuvo enviando o recibiendo datos (active) antes de volverse inactivo, y del caso contrario, sobre el tiempo que estuvo inactivo (idle) antes de volverse activo. Son las variables Active.Mean, Active.Std, Active.Max, Active.Min, Idle.Mean, Idle.Std, Idle.Max y Idle.Min.
 
@@ -114,13 +114,13 @@ Puede observarse que la distinción entre las características forward y backwar
 Antes de empezar con los análisis se deben preprocesar los datos. En esta sección se explicarán los preprocesamientos realizados y sus razonamientos.
 
 Lo primero de todo es visualizar el dataset completo con todas sus variables:
-```{r}
+```{r resumen dataset original}
 # Mostramos el dataset completo
 print(dfSummary(mydf, plain.ascii = FALSE), method = "render")
 ```
 
 Ahora vamos a eliminar del dataset las variables que no aportan información relevante para el análisis.
-```{r}
+```{r eliminacion variables}
 # Guardamos una copia del dataset original para comparar posteriormente
 mydf.original <- mydf
 
@@ -143,20 +143,20 @@ La explicación de por qué hemos eliminado cada variable es la siguiente:
 <span id="analisis-cwe"> Al analizar las variables vemos que hay una con una situación particular. Se trata de "CWE.Flag.Count", que tiene valores "0", "0.0", "" y "SCAREWARE". Además, estos valores atípicos no son pocos, suponen el 6% del total, más que los valores "1" de otros Flags como "FIN.Flag.Count", donde solo el 1.7% son valores 1. Esto puede deberse a que, por un error, los valores atípicos deberían ser 1. Si fuera un error de tipografía que pasará algunos valores 0 a 0.0 no habría tantos casos. Además, a esto se le suma que este Flag indica "Common Weakness Enumeration", que es un estándar utilizado para categorizar y describir vulnerabilidades en sistemas de software, lo que puede ser relevante para detectar keyloggers. 
 
 Para determinar la importancia de esta variable, antes de decidir cómo trabajar con ella, vamos a realizar una tabla de contingencia con la variable "Class" para ver cómo se distribuyen los valores de "CWE.Flag.Count" en función de si la conexión es benigna o maligna.
-```{r}
+```{r tabla contingencia}
 # Creamos una tabla de contingencia
 tabla.contingencia <- addmargins(table(mydf$CWE.Flag.Count, mydf$Class))
 print(tabla.contingencia)
 ```
 
 Se puede ver cómo todos los valores que no son "0" en "CWE.Flag.Count" son "Keylogger". Esto quiere decir que la variable "CWE.Flag.Count" es un predictor muy importante para el análisis que queremos realizar del dataset. Además, esto puede indicarnos que los valores que no son "0" pueden ser un tipo de vulnerabilidad del sistema. Por ello, para poder trabajar de forma más estándar con esta variable, vamos a convertir los valores anómalos a "1", de forma que solo tenga valores "0" y "1".
-```{r}
+```{r conversion valores anómalos}
 # Convertimos los valores anómalos a 1
 mydf$CWE.Flag.Count <- ifelse(mydf$CWE.Flag.Count != "0", "1", mydf$CWE.Flag.Count)
 ```
 
 Ahora vamos a comprobar los valores nulos del dataset y ver cómo los tratamos. Empecemos viendo la cantidad de filas con nulos.
-```{r}
+```{r valores nulos}
 # Buscamos las filas con valores nulos
 na.coordinates <- which(is.na(mydf), arr.ind = TRUE)
 
@@ -169,19 +169,19 @@ paste("El porcentaje de filas con nulos es: ", na.prows, "%", sep = "")
 ```
 
 Vemos que el dataset contiene muy poca cantidad de valores nulos. Por lo tanto, eliminamos las filas con valores NA.
-```{r, eval = FALSE}
+```{r eliminacion nulos, eval = FALSE}
 # Eliminamos las filas con valores nulos
 mydf <- na.omit(mydf)
 ```
 
 Ahora, eliminamos las filas duplicadas.
-```{r, eval = FALSE}
+```{r eliminacion duplicados, eval = FALSE}
 # Eliminamos las filas duplicadas
 mydf <- mydf[!duplicated(mydf), ]
 ```
 
 Vamos a eliminar las columnas con desviación estándar cero. Para ello, pasaremos a numérico todas las variables que no sean claramente caracteres.
-```{r, eval = FALSE}
+```{r eliminar constantes, eval = FALSE}
 # Pasamos a numérico las variables que les corresponde
 mydf$Packet.Length.Std <- as.numeric(mydf$Packet.Length.Std)
 mydf$CWE.Flag.Count <- as.numeric(mydf$CWE.Flag.Count)
@@ -197,13 +197,13 @@ mydf <- mydf[, -constant_cols]
 ```
 
 Guardamos el dataset procesado.
-```{r, eval = FALSE}
+```{r crear dataset procesado, eval = FALSE}
 # Guardamos el dataset procesado
 write.csv(mydf, "Keylogger_Detection_processed.csv", row.names = FALSE)
 ```
 
 Para ver que el dataset procesado sirve para trabajar, vamos a comparar el porcentaje de valores positivos y negativos en los dos datasets.
-```{r}
+```{r comprobar proporciones original-procesado}
 # Cargamos el dataset procesado
 mydf <- read.csv("Keylogger_Detection_processed.csv", header = TRUE, sep = ",")
 
@@ -232,7 +232,7 @@ Vemos que la proporción de casos positivos y negativos no cambia. Por lo tanto,
 # Sampleo de los datos. {#sampleo}
 Para poder trabajar con holgura a lo largo de la práctica, vamos a coger una muestra del dataset original del 20%. De esta forma, los tiempos de ejecución serán menores y podremos trabajar más rápido.
 
-```{r, eval = FALSE}
+```{r crear sampled, eval = FALSE}
 # Sampleamos el dataset
 mydf.sample <- mydf[sample(nrow(mydf), nrow(mydf) * 0.2), ]
 
@@ -241,7 +241,7 @@ write.csv(mydf.sample, "sampled.csv", row.names = FALSE)
 ```
 
 Una vez tenemos el dataset sampleado, vamos a comprobar que la proporción de casos positivos y negativos no ha cambiado.
-```{r}
+```{r comprobar proporciones original-sampleado}
 mydf.sample <- read.csv("sampled.csv", header = TRUE, sep = ",")
 
 # Porcentaje de valores positivos y negativos en el dataset sampleado
@@ -262,7 +262,7 @@ Vemos que las proporciones de positivos y negativos en ambos datasets son práct
 ## Carga del dataset sampleado
 
 Primero de todo hay que volver a cargar el dataset sampleado. Además, se deben volver a pasar a factor las variables que lo requieran.
-```{r}
+```{r cargar dataset sampleado}
 # Leemos el dataset preprocesado
 mydf <- read.csv("sampled.csv", header = TRUE, sep = ",")
 
@@ -286,19 +286,19 @@ mydf$Class <- relevel(mydf$Class, ref = "Benign")
 ## Análisis del PCA
 
 Vamos a realizar el PCA con el conjunto preprocesado. Primero, seleccionamos las columnas numéricas.
-```{r}
+```{r seleccionar columnas numericas}
 # Seleccionamos las columnas numéricas
 mydf.numeric <- mydf[, sapply(mydf, is.numeric)]
 ```
 
 Una vez tenemos las columnas numéricas seleccionadas, realizamos el PCA. No hace falta estandarizar las variables previamente ya que el PCA lo hace por nosotros con el parámetro `scale = TRUE`.
-```{r}
+```{r realizar PCA}
 # Realizamos PCA
 pr.out <- prcomp(mydf.numeric, scale = TRUE)
 ```
 
 Vamos a realizar un análisis del PCA para ver qué información nos aporta. Para ello, primero vamos a ver la varianza acumulada, para determinar cuáles son las componentes principales más importantes.
-```{r}
+```{r resumen PCA}
 # Vemos la varianza explicada
 summary(pr.out)
 
@@ -318,10 +318,10 @@ ncomp <- which(pr.out.cumvar > 0.8)[1]
 ncomp
 ```
 
-Vemos que necesitamos las 11 primeras componentes principales para explicar el 80% de la varianza. Solo con las 2 primeras componentes principales explicamos tan solo el 35.65% de la varianza, una cifra muy baja. Por tanto, necesitamos muchas componentes principales para explicar la varianza de los datos.
+Vemos que necesitamos las 11 primeras componentes principales para explicar el 80% de la varianza. Solo con las 2 primeras componentes principales explicamos tan solo el 36.26% de la varianza, una cifra muy baja. Por tanto, necesitamos muchas componentes principales para explicar la varianza de los datos.
 
 Vamos a realizar un biplot para ver cómo se relacionan las variables con las dos primeras componentes principales.
-```{r, eval = FALSE}
+```{r biplot, eval = FALSE}
 # Realizamos un biplot solo con los vectores, no con los datos
 png("biplot.png")
 biplot(
@@ -335,7 +335,7 @@ dev.off()
 
 ![](biplot.png)
 
-Se puede ver en la imagen del biplot que tenemos demasiados predictores y demasiados valores; no se puede sacar nada en claro. Además, como PC1 y PC2 explican solo el 35.65% de la varianza, el biplot tampoco sería representativo.
+Se puede ver en la imagen del biplot que tenemos demasiados predictores y demasiados valores; no se puede sacar nada en claro. Además, como PC1 y PC2 explican solo el 36.26% de la varianza, el biplot tampoco sería representativo.
 
 Por todo esto, podemos ver que la elaboración de un modelo de clasificación que identifique conexiones de keystrokes va a ser un problema complicado. Tenemos muchos predictores y ver las relaciones entre ellos no va a ser una tarea sencilla. Si intentásemos reducir la dimensionalidad del problema con PCA, como mucho podríamos reducir a 11 dimensiones, lo cual sigue siendo una gran cantidad de variables.
 
@@ -344,7 +344,7 @@ Por todo esto, podemos ver que la elaboración de un modelo de clasificación qu
 # Regresión logística. {#regresion-logistica}
 Vamos a intentar predecir si una conexión es benigna o maligna mediante un modelo de regresión logística. Realizaremos unas predicciones con el resultado del modelo y veremos cómo funciona para el dataset. No usaremos conjunto de prueba ni de test, ya que simplemente queremos ver cómo de eficaz es con nuestro conjunto de datos.
 
-```{r}
+```{r regresion logistica}
 # Creamos el modelo de regresión logística
 logr <- glm(Class ~ ., data = mydf, family = binomial)
 
@@ -362,7 +362,7 @@ alias.matrix
 Vemos que hay variables que han generado aliasing en el modelo, lo que significa que están perfectamente correlacionadas con otras variables (variables de filas con variables de columnas). El modelo de regesión logística directamente no tendrá en cuenta estas variables. 
 
 Una vez tenemos el modelo creado, realizamos unas predicciones. Con estas predicciones se harán unas tablas de confusión para ver cómo se comporta el modelo.
-```{r}
+```{r predicciones regresion logistica}
 # Realizamos las predicciones
 logr.probs <- predict(logr, type = "response")
 logr.pred <- ifelse(logr.probs > 0.5, "Benign", "Keylogger")
@@ -432,7 +432,7 @@ Los hiperparámetros que utiliza el modelo Random Forest son los siguientes:
 ## Preparación de los datos de entrenamiento, prueba y los folds
 
 Lo primero de todo es escalar los datos para que tengan media 0 y varianza 1. Esto es necesario para que el modelo funcione correctamente.
-```{r}
+```{r escalar datos numericos}
 # Escogemos los datos numéricos
 mydf.numeric <- mydf[, sapply(mydf, is.numeric)]
 
@@ -445,7 +445,7 @@ mydf[, sapply(mydf, is.numeric)] <- mydf.numeric.scaled
 
 Vamos a dividir el conjunto de datos en un conjunto de entrenamiento y un conjunto de prueba.
 
-```{r}
+```{r dividir train y test}
 # Dependiendo de las celdas que se hayan ejecutado la selección de números aleatorios puede cambiar
 # así que volvemos a fijar la semilla
 set.seed(12345)
@@ -457,7 +457,7 @@ test <- mydf[-train_index, ]
 ```
 
 Ahora dividimos el conjunto de train en 5 pliegues para realizar la validación cruzada.
-```{r}
+```{r dividir folds}
 # Definimos el número de pliegues
 n <- 5
 
@@ -473,7 +473,7 @@ De esta forma ya tenemos cinco pliegues preparados para realizar validacion cruz
 Vamos a realizar la validación cruzada con el bagging. Para realizar la validación cruzada vamos a utilizar el paquete `doParallel`. Esta librería nos permite realizar cálculos en paralelo, lo que nos permitirá reducir el tiempo de cálculo. 
 
 Definimos los hiperparámetros.
-```{r}
+```{r definir hiperparametros bagging}
 # Definimos los valores de mtry, ntree y nodesize que vamos a probar
 values.mtry.op <- as.integer(sqrt(ncol(mydf))) # Valor "óptimo" de mtry
 values.mtry <- c(values.mtry.op - 1, values.mtry.op, values.mtry.op + 1)
@@ -486,7 +486,7 @@ colnames(v) <- c("mtry", "ntree", "nodesize")
 ```
 
 Realizamos la validación cruzada con `doParallel`.
-```{r, eval = FALSE}
+```{r VD bagging, eval = FALSE}
 # Creamos un cluster para realizar los cálculos en paralelo
 cl <- makeCluster(detectCores() - 1) # Dejamos un núcleo libre
 
@@ -559,7 +559,7 @@ write.csv(crossvalidation.results, "crossvalidation_bagging.csv", row.names = FA
 ```
 
 Una vez hemos realizado la validación cruzda, vamos a representar los resultados y seleccionar los hiperparámetros que han obtenido el mejor F1-Score.
-```{r}
+```{r resultados VD}
 # Cargamos los resultados de la validación cruzada
 crossvalidation.results <- read.table("crossvalidation_bagging.csv", header = TRUE, sep = ",")
 
@@ -604,7 +604,7 @@ print(v.op)
 
 ## Entrenamiento del modelo y predicciones
 Una vez tenemos los hiperparámetros seleccionados, vamos a entrenar el modelo con el conjunto de entrenamiento. Guardaremos el modelo para no tener que volver a entrenarlo.
-```{r, eval = FALSE}
+```{r entrenamiento bagging, eval = FALSE}
 # Creamos el modelo de bagging con los hiperparámetros seleccionados
 bag <- randomForest(Class ~ ., data = train, mtry = v.op[1], ntree = v.op[2], nodesize = v.op[3])
 
@@ -613,7 +613,7 @@ saveRDS(bag, "randomForest_model.rds")
 ```
 
 Cargamos el modelo y realizamos las predicciones con el conjunto de test. Calculamos el F1-Score y la precisión del modelo.
-```{r}
+```{r test bagging}
 # Cargo el modelo de bagging
 bag <- readRDS("randomForest_model.rds")
 
@@ -652,7 +652,7 @@ Dado que el número de datos que tenemos disponibles para entrenar el modelo ele
 
 Hay otros aspectos de la arquitectura de la red a tener en cuenta. Las funciones de activación que se tendrán en todas las neuronas será la misma: la función $activation = "relu"$, la cual dota de no linealidad al modelo. Para la capa de salida, se usarán dos neuronas, una por cada clase distinta, con función de activación $activation = "softmax"$, que produce como salida la probabilidad de que un vector de entrada pertenezca a su correspondiente clase.
 
-En cuanto a la función de pérdida, se usa $loss = "categorical_crossentropy"$, ideal para problemas de clasificación categórica, y el optimizador usado sera $optimizer = optimizer_adam()$, el cual maneja el parámetro de tasa de aprendizaje por sí mismo. Esto hace que no sea necesario tratar este último como un hiperparámetro que variar.
+En cuanto a la función de pérdida, se usa $loss = "categorical\_crossentropy"$, ideal para problemas de clasificación categórica, y el optimizador usado sera $optimizer = optimizer\_adam()$, el cual maneja el parámetro de tasa de aprendizaje por sí mismo. Esto hace que no sea necesario tratar este último como un hiperparámetro que variar.
 
 Dado que en el subapartado 'Preparación de los datos de entrenamiento, prueba y los folds' ya se han creado los pliegues con los que se realizará la validación cruzada, usaremos dichos pliegues para buscar los hiperparámetros óptimos de la red neuronal.
 
@@ -662,7 +662,7 @@ Dado que en el subapartado 'Preparación de los datos de entrenamiento, prueba y
 El proceso de validación cruzada es análogo al del bagging, pero adaptado al algoritmo de la red neuronal y sus hiperparámetros.
 
 Primero tenemos que pasar todas las variables a numéricas y escalarlas (excepto la variable "Class").
-```{r}
+```{r escalar variables factores}
 # Convertimos todas las variables a numéricas y las escalamos
 mydf.numeric <- as.data.frame(scale(sapply(mydf, as.numeric)))
 mydf.numeric$Class <- mydf$Class
@@ -676,7 +676,7 @@ folds <- split(train, folds_indexes)
 ```
 
 Definimos los valores de nodos, dropout y epocas que vamos a probar.
-```{r}
+```{r definir hiperparametros red neuronal}
 # Definimos los valores de nodos, dropout y epocas que vamos a probar
 values.nneurons1 <- c(16, 32)
 values.nneurons2 <- c(0, 16, 32)
@@ -689,7 +689,7 @@ colnames(v) <- c("Units Layer 1", "Units Layer 2", "Dropout Rate", "Epocas")
 ```
 
 Creamos un cluster con `doParallel` para realizar los cálculos en paralelo de la validación cruzada. Dado que la proporción de clases en el conjunto de entrenamiento está algo desbalanceada, arreglaremos esto usando en la función `fit` el parámetro $class_weight$, que compensa esta desigualdad en las proporciones dando un peso más alto a la clase Keylogger, cuyo número de muestras en el conjunto de entrenamiento es menor que el de la clase Benign.
-```{r, eval = FALSE}
+```{r VD red neuronal, eval = FALSE}
 # Creamos un cluster para realizar los cálculos en paralelo
 cl <- makeCluster(detectCores() - 1) # Dejamos un núcleo libre
 
@@ -802,7 +802,7 @@ crossvalidation.results
 ```
 
 Una vez hemos realizado la validación cruzda, vamos a representar los resultados y seleccionar los hiperparámetros que han obtenido el mejor F1-Score.
-```{r}
+```{r resultados VD red neuronal}
 # Cargamos los resultados de la validación cruzada
 crossvalidation.results <- read.table("crossvalidation_neuralnetwork.csv", header = TRUE, sep = ",")
 
@@ -847,7 +847,7 @@ v.op
 
 ## Entrenamiento del modelo y predicciones
 Una vez tenemos los hiperparámetros seleccionados, vamos a entrenar el modelo con el conjunto de entrenamiento. Guardaremos el modelo para no tener que volver a entrenarlo.
-```{r, eval = FALSE}
+```{r entrenar red neuronal, eval = FALSE}
 k_clear_session()
 
 # Creamos la red neuronal con los parámetros seleccionados
@@ -880,7 +880,7 @@ py_run_string("model.save('model.keras')")
 ```
 
 Cargamos el modelo y realizamos las predicciones con el conjunto de test. Calculamos el F1-Score y la precisión del modelo.
-```{r}
+```{r test red neuronal}
 # Cargamos la red neuronal de Python y lo pasamos a R
 py_run_string("import keras")
 py_run_string("model = keras.models.load_model('model.keras')")
@@ -912,7 +912,7 @@ print(confusion_matrix_nn)
 # Análisis de resultados. {#analisis-resultados}
 
 Vamos a analizar los resultados que hemos obtenido con los modelos de Bagging y de Red Neuronal. Para ello, volvamos a mostrar las matrices de confusión de ambos modelos. También representaremos el F1-Score y la precisión de ambos modelos.
-```{r}
+```{r resultados}
 # Mostramos la matriz de confusión del modelo de Bagging
 print(confusion_matrix_bagging)
 print(paste("F1-Score Bagging: ", f1score.bagging, sep = ""))
@@ -931,16 +931,24 @@ De primeras vemos que el modelo de Bagging tiene valores tanto de F1-Score como 
 
 Con eset análisis podemos ver que el modelo de Bagging ha obtenido resultados mejores que el modelo de Red Neuronal, tanto en precisión como en sensibilidad. Aún así, prediciendo los resultados positivos (keylogger) no ha sido realmente bueno, solo un poco más del 50%. Esto es muy cercando a elegir al azar (50% - 50%) si una conexión es maligna o no, que obtendría una probabilidad del 48% de ser maligna (ya que hay un 48% de casos positivos y un 52% de negativos en el conjunto de entrenamiento), tan solo un 3% mejor. Sin embargo, la sensibilidad del modelo de Bagging es buena tanto para los casos benignos como los keylogger, siendo superior al 70% en ambos casos.
 
-Es posible que la Red Neuronal no haya sido muy eficaz debido a que no hemos trabajado con el dataset completo, sino con un subconjunto de los datos, ya que las redes neuronales necesitan una gran cantidad de datos para aprender correctamente. También es posible que con una gran cantidad de épocas el modelo hubiera crecido lentamente, acercándose muy poco a poco a un resultado óptimo.
+Es posible que la Red Neuronal no haya sido muy eficaz debido a que no hemos trabajado con el dataset completo, sino con un subconjunto de los datos, ya que las redes neuronales necesitan una gran cantidad de datos para aprender correctamente. Las redes neuronales son modelos de Machine Learning que tardan en aprender las relaciones complejas entre las variables y necesitan una gran cantidad de ejemplos para hacerlo, por lo que puede ser que los valores de épocas, neuronas y cantidad de capas (100, 32 y 2 como mucho) se hayan quedado cortos al hacer la validación cruzada. Este tipo de entrenamiento de redes grandes y complejas necesita una gran cantidad de tiempo y recursos, además de funcionar con GPU en vez de CPU; por lo que la no disponibilidad de estos requisitos para el trabajo nos ha limitado a utilizar redes sencillas y con poco tiempo de entrenamiento.
 
-Respecto a simplicidad, el modelo de Bagging es más simple que la red neuronal. Necesita menos cantidad de hiperparámetos y es más rápido de entrenar. Además, es más sencillo de interpretar, por lo que es preferible de utilizar frente a la red neuronal si los resultados son parecidos. Puede ser que este modelo haya dado mejores resultados ya que el Random Forest (el tipo de Bagging que hemos usado) escoge aleatoriamente los predictores que va a usar, reduciendo la dimensionalidad del problema que de por sí en este dataset es muy alta. Esta reducción de la dimensionalidad y la simplicidad del modelo han podido ser factores clave para que el modelo de Bagging haya dado mejores resultados que la Red Neuronal. En el caso de haber tenido una mayor cantidad de datos, o que las variables no hubieran estado apenas correlacionadas entre sí, el modelo de Red Neuronal podría haber sido mejor.
+Respecto al modelo de Bagging, este es más simple que la red neuronal; necesita menos cantidad de hiperparámetos y es más rápido de entrenar. Además, es más sencillo de interpretar. Puede ser que este modelo haya dado mejores resultados ya que el Random Forest (el tipo de Bagging que hemos usado) escoge aleatoriamente los predictores que va a usar, reduciendo la dimensionalidad del problema que de por sí en este dataset es muy alta. Esta reducción de la dimensionalidad y la simplicidad del modelo han podido ser factores clave para que el modelo de Bagging haya dado mejores resultados que la Red Neuronal. Esto ha podido funcionar bien debido a que muchas variables estaban correlacionadas entre sí, por lo que al escoger aleatoriamente un subconjunto de predictores estos podían explicar casi todos los resultados, si no todos. En el caso de que los predictores hubieran estado completamente descorrelacionados (a excepción de con la variable objetivo), el modelo de Random Forest quizás no hubiera sido tan efectivo, y en comparación la red neuronal hubiera obtenido resultados similares o mejores.
 
-Vamos a analizar el modelo de Bagging para ver la importancia de las variables en la predicción.
-```{r}
+Ahora vamos a analizar el modelo de Bagging para ver la importancia de las variables en la predicción.
+```{r importancia bagging}
 # Análisis de importancia de variables
 importance_bagging <- importance(bag)
 importance_bagging <- importance_bagging[order(importance_bagging, decreasing = TRUE), ]
 importance_bagging
 ```
 
-Vemos que la variable más importante de "CWE.Flags.Count". Esto tiene sentido porque, como hemos visto en el [apartado 2](#analisis-cwe), esta variable tiene una correlación muy alta con la variable objetivo "Class". De hecho, siempre que el valor del predictor sea 1, la clase será Keylogger. Otras variables muy importantes son las características del flujo (menos la desviación estándar) y los paquetes por segundo en dirección Fwd. 
+Vemos que la variable más importante de "CWE.Flags.Count". Esto tiene sentido porque, como hemos visto en el [apartado 2](#analisis-cwe), esta variable tiene una correlación muy alta con la variable objetivo "Class". De hecho, siempre que el valor del predictor sea 1, la clase será Keylogger. 
+
+Otras variables importantes han sido:
+
+- Variables que tienen que ver con el tiempo entre paquete y paquete, como "Flow.IAT.Min", "Flow.IAT.Mean" y "Flow.IAT.Max".
+- Variables de cantidad de paquetes por segundo, como "Fwd.Packets.s" y Flow.Packets.s".
+  
+
+Las variables que menos importancia han tenido han sido los Flags, a excepción de "URG.Flag.Count" y "CWE.Flag.Count", y la variable "Protocol". También se puede apreciar que las variables de "Bwd" suelen ser menos importantes que las de "Fwd".
