@@ -352,7 +352,7 @@ dev.off()
 
 ![](biplot.png)
 
-Se puede ver en la imagen del biplot que tenemos demasiados predictores y demasiados valores; no se puede sacar nada en claro. Además, como PC1 y PC2 explican solo el 36.26% de la varianza, el biplot tampoco sería representativo.
+Se puede ver en la imagen del biplot que tenemos demasiados predictores y demasiados valores; no se puede sacar nada en claro. Además, como PC1 y PC2 explican solo el 36.26% de la varianza, el biplot tampoco sería representativo. 
 
 Por todo esto, podemos ver que la elaboración de un modelo de clasificación que identifique conexiones de keystrokes va a ser un problema complicado. Tenemos muchos predictores y ver las relaciones entre ellos no va a ser una tarea sencilla. Si intentásemos reducir la dimensionalidad del problema con PCA, como mucho podríamos reducir a 11 dimensiones, lo cual sigue siendo una gran cantidad de variables.
 
@@ -482,7 +482,7 @@ n <- 5
 folds_indexes <- sample(rep(1:n, length.out = nrow(train)))
 ```
 
-De esta forma ya tenemos cinco pliegues preparados para realizar validacion cruzada.
+De esta forma ya tenemos cinco pliegues preparados para realizar validación cruzada.
 
 \
 
@@ -575,7 +575,7 @@ crossvalidation.results <- cbind(v, crossvalidation.results)
 write.csv(crossvalidation.results, "crossvalidation_bagging.csv", row.names = FALSE)
 ```
 
-Una vez hemos realizado la validación cruzda, vamos a representar los resultados y seleccionar los hiperparámetros que han obtenido el mejor F1-Score.
+Una vez hemos realizado la validación cruzada, vamos a representar los resultados y seleccionar los hiperparámetros que han obtenido el mejor F1-Score.
 ```{r resultados VD}
 # Cargamos los resultados de la validación cruzada
 crossvalidation.results <- read.table("crossvalidation_bagging.csv", header = TRUE, sep = ",")
@@ -692,7 +692,7 @@ test <- mydf.numeric[-train_index, ]
 folds <- split(train, folds_indexes)
 ```
 
-Definimos los valores de nodos, dropout y epocas que vamos a probar.
+Definimos los valores de nodos, dropout y épocas que vamos a probar.
 ```{r definir hiperparametros red neuronal}
 # Definimos los valores de nodos, dropout y epocas que vamos a probar
 values.nneurons1 <- c(16, 32)
@@ -700,7 +700,7 @@ values.nneurons2 <- c(0, 16, 32)
 values.dropout.rate <- c(0.1, 0.5)
 values.epochs <- c(50, 100)
 
-# Creamos una matriz con todas las combinaciones posibles de los valores de nodos, dropout y epocas
+# Creamos una matriz con todas las combinaciones posibles de los valores de nodos, dropout y épocas
 v <- expand.grid(values.nneurons1, values.nneurons2, values.dropout.rate, values.epochs)
 colnames(v) <- c("Units Layer 1", "Units Layer 2", "Dropout Rate", "Epocas")
 ```
@@ -818,7 +818,7 @@ write.csv(crossvalidation.results, "crossvalidation_neuralnetwork.csv", row.name
 crossvalidation.results
 ```
 
-Una vez hemos realizado la validación cruzda, vamos a representar los resultados y seleccionar los hiperparámetros que han obtenido el mejor F1-Score.
+Una vez hemos realizado la validación cruzada, vamos a representar los resultados y seleccionar los hiperparámetros que han obtenido el mejor F1-Score.
 ```{r resultados VD red neuronal}
 # Cargamos los resultados de la validación cruzada
 crossvalidation.results <- read.table("crossvalidation_neuralnetwork.csv", header = TRUE, sep = ",")
@@ -946,7 +946,7 @@ De primeras vemos que el modelo de Bagging tiene valores tanto de F1-Score como 
 - Con el modelo de Bagging se predice correctamente el 88.06% de las conexiones benignas y el 50.96% de las conexiones keylogger del dataset. Por otro lado, de los casos predichos como benignos el 72.07% eran correctos y de los casos predichos como keylogger 76.04%.
 - Con el modelo de Red Neuronal se predice correctamente el 76.73% de las conexiones benignas y el 48.82% de las conexiones keylogger del dataset. Por otro lado, de los casos predichos como benignos el 68.30% eran correctos y de los casos predichos como keylogger 59.35%.
 
-Con eset análisis podemos ver que el modelo de Bagging ha obtenido resultados mejores que el modelo de Red Neuronal, tanto en precisión como en sensibilidad. Aún así, prediciendo los resultados positivos (keylogger) no ha sido realmente bueno, solo un poco más del 50%. Esto es muy cercando a elegir al azar (50% - 50%) si una conexión es maligna o no, que obtendría una probabilidad del 48% de ser maligna (ya que hay un 48% de casos positivos y un 52% de negativos en el conjunto de entrenamiento), tan solo un 3% mejor. Sin embargo, la sensibilidad del modelo de Bagging es buena tanto para los casos benignos como los keylogger, siendo superior al 70% en ambos casos.
+Con este análisis podemos ver que el modelo de Bagging ha obtenido resultados mejores que el modelo de Red Neuronal, tanto en precisión como en sensibilidad. Aún así, prediciendo los resultados positivos (keylogger) no ha sido realmente bueno, solo un poco más del 50%. Esto es muy cercando a elegir al azar (50% - 50%) si una conexión es maligna o no, que obtendría una probabilidad del 48% de ser maligna (ya que hay un 48% de casos positivos y un 52% de negativos en el conjunto de entrenamiento), tan solo un 3% mejor. Sin embargo, la sensibilidad del modelo de Bagging es buena tanto para los casos benignos como los keylogger, siendo superior al 70% en ambos casos.
 
 Es posible que la Red Neuronal no haya sido muy eficaz debido a que no hemos trabajado con el dataset completo, sino con un subconjunto de los datos, ya que las redes neuronales necesitan una gran cantidad de datos para aprender correctamente. Las redes neuronales son modelos de Machine Learning que tardan en aprender las relaciones complejas entre las variables y necesitan una gran cantidad de ejemplos para hacerlo, por lo que puede ser que los valores de épocas, neuronas y cantidad de capas (100, 32 y 2 como mucho) se hayan quedado cortos al hacer la validación cruzada. Este tipo de entrenamiento de redes grandes y complejas necesita una gran cantidad de tiempo y recursos, además de funcionar con GPU en vez de CPU; por lo que la no disponibilidad de estos requisitos para el trabajo nos ha limitado a utilizar redes sencillas y con poco tiempo de entrenamiento.
 
